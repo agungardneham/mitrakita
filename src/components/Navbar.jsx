@@ -47,27 +47,34 @@ const Navbar = ({ userRole, onNavigate }) => {
           </Link>
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
-            <button
-              onClick={() => onNavigate("home")}
+            <Link
+              to="/"
               className="text-gray-700 hover:text-green-600 transition font-medium"
               style={{ fontFamily: "Montserrat, sans-serif" }}
             >
               Beranda
-            </button>
-            <button
-              onClick={() => onNavigate("ikm-list")}
+            </Link>
+            <Link
+              to="/direktori"
               className="text-gray-700 hover:text-green-600 transition font-medium"
               style={{ fontFamily: "Montserrat, sans-serif" }}
             >
-              Daftar IKM
-            </button>
-            <button
-              onClick={() => onNavigate("research")}
+              Direktori IKM
+            </Link>
+            <Link
+              to="/penelitian"
               className="text-gray-700 hover:text-green-600 transition font-medium"
               style={{ fontFamily: "Montserrat, sans-serif" }}
             >
               Penelitian
-            </button>
+            </Link>
+            <Link
+              to="/about"
+              className="text-gray-700 hover:text-green-600 transition font-medium"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+            >
+              Tentang Kami
+            </Link>
             {userRole ? (
               <button
                 onClick={() => onNavigate("dashboard")}
@@ -132,6 +139,13 @@ const Navbar = ({ userRole, onNavigate }) => {
             >
               Penelitian
             </button>
+            <Link
+              to="/about"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
+            >
+              Tentang Kami
+            </Link>
             {userRole ? (
               <button
                 onClick={() => {

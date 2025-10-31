@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   Users,
@@ -111,20 +112,20 @@ const HomePage = ({ onNavigate }) => {
 
               {/* CTA Buttons */}
               <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={() => onNavigate("ikm-list")}
-                  className="bg-white text-green-600 px-8 py-3 rounded-2xl font-semibold hover:shadow-2xl transition-all"
+                <Link
+                  to="/direktori"
+                  className="bg-white text-green-600 px-8 py-3 rounded-2xl font-semibold hover:shadow-2xl transition-all inline-block"
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
                   Jelajahi IKM
-                </button>
-                <button
-                  onClick={() => onNavigate("login")}
-                  className="bg-yellow-400 text-gray-800 px-8 py-3 rounded-2xl font-semibold hover:shadow-2xl transition-all"
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-yellow-400 text-gray-800 px-8 py-3 rounded-2xl font-semibold hover:shadow-2xl transition-all inline-block"
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
                   Daftar Sekarang
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -286,13 +287,13 @@ const HomePage = ({ onNavigate }) => {
               Bergabunglah dengan ribuan IKM dan industri yang telah berkembang
               bersama MitraKita
             </p>
-            <button
-              onClick={() => onNavigate("login")}
-              className="bg-yellow-400 text-gray-800 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
+            <Link
+              to="/register"
+              className="bg-yellow-400 text-gray-800 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105 inline-block"
               style={{ fontFamily: "Montserrat, sans-serif" }}
             >
               Mulai Sekarang
-            </button>
+            </Link>
           </div>
         </div>
       </div>

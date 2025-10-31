@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
   Search,
   Users,
@@ -502,12 +503,13 @@ const AboutUsPage = () => {
               bermitra, dan bertumbuh bersama
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                className="bg-white text-green-600 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
+              <Link
+                to="/register"
+                className="inline-block bg-white text-green-600 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >
-                Daftar Sebagai IKM
-              </button>
+                Daftar Sekarang
+              </Link>
               <button
                 className="bg-yellow-400 text-gray-800 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
                 style={{ fontFamily: "Montserrat, sans-serif" }}

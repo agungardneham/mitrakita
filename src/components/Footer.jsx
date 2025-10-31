@@ -33,16 +33,16 @@ const Footer = () => {
               style={{ fontFamily: "Open Sans, sans-serif" }}
             >
               <li className="hover:text-green-400 transition">
+                <Link to="/">Beranda</Link>
+              </li>
+              <li className="hover:text-green-400 transition">
+                <Link to="/direktori">Direktori IKM</Link>
+              </li>
+              <li className="hover:text-green-400 transition">
+                <Link to="/penelitian">Penelitian</Link>
+              </li>
+              <li className="hover:text-green-400 transition">
                 <Link to="/about">Tentang Kami</Link>
-              </li>
-              <li className="hover:text-green-400 cursor-pointer transition">
-                Panduan Pengguna
-              </li>
-              <li className="hover:text-green-400 cursor-pointer transition">
-                Syarat & Ketentuan
-              </li>
-              <li className="hover:text-green-400 cursor-pointer transition">
-                Kebijakan Privasi
               </li>
             </ul>
           </div>

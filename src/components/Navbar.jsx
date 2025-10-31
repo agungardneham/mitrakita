@@ -77,13 +77,13 @@ const Navbar = ({ userRole, onNavigate }) => {
                 Dashboard
               </button>
             ) : (
-              <button
-                onClick={() => onNavigate("login")}
-                className="bg-gradient-to-r from-green-600 to-green-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition-all font-semibold"
+              <Link
+                to="/login"
+                className="bg-linear-to-r from-green-600 to-green-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition-all font-semibold"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >
                 Masuk
-              </button>
+              </Link>
             )}
           </div>
 
@@ -132,15 +132,25 @@ const Navbar = ({ userRole, onNavigate }) => {
             >
               Penelitian
             </button>
-            <button
-              onClick={() => {
-                onNavigate(userRole ? "dashboard" : "login");
-                setMobileMenuOpen(false);
-              }}
-              className="block w-full text-left px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition"
-            >
-              {userRole ? "Dashboard" : "Masuk"}
-            </button>
+            {userRole ? (
+              <button
+                onClick={() => {
+                  onNavigate("dashboard");
+                  setMobileMenuOpen(false);
+                }}
+                className="block w-full text-left px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition"
+              >
+                Dashboard
+              </button>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-left px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition"
+              >
+                Masuk
+              </Link>
+            )}
           </div>
         </div>
       )}

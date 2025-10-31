@@ -112,33 +112,27 @@ const Navbar = ({ userRole, onNavigate }) => {
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t">
           <div className="px-4 py-3 space-y-2">
-            <button
-              onClick={() => {
-                onNavigate("home");
-                setMobileMenuOpen(false);
-              }}
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
             >
               Beranda
-            </button>
-            <button
-              onClick={() => {
-                onNavigate("ikm-list");
-                setMobileMenuOpen(false);
-              }}
+            </Link>
+            <Link
+              to="/direktori"
+              onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
             >
-              Daftar IKM
-            </button>
-            <button
-              onClick={() => {
-                onNavigate("research");
-                setMobileMenuOpen(false);
-              }}
+              Direktori IKM
+            </Link>
+            <Link
+              to="/penelitian"
+              onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
             >
               Penelitian
-            </button>
+            </Link>
             <Link
               to="/about"
               onClick={() => setMobileMenuOpen(false)}

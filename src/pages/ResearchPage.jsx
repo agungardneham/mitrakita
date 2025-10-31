@@ -275,7 +275,7 @@ const ResearchPage = () => {
       <Navbar />
       <div className="bg-green-50 min-h-screen">
         {/* Hero Header */}
-        <div className="bg-gradient-to-br from-green-600 via-green-500 to-blue-600 text-white py-16">
+        <div className="bg-gradient-to-br from-green-600 via-green-500 to-blue-600 text-white py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1
               className="text-4xl md:text-5xl font-bold mb-4 text-center"
@@ -292,10 +292,10 @@ const ResearchPage = () => {
             </p>
 
             {/* Tab Navigation */}
-            <div className="flex justify-center space-x-4 mb-8">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-center gap-3 sm:space-x-4 mb-8 w-full">
               <button
                 onClick={() => setActiveTab("feed")}
-                className={`group relative px-8 py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
+                className={`group relative w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
                   activeTab === "feed"
                     ? "bg-white text-green-600 shadow-xl hover:shadow-2xl hover:bg-green-50"
                     : "bg-white/20 text-white hover:bg-white/30 hover:shadow-lg backdrop-blur-sm"
@@ -319,7 +319,7 @@ const ResearchPage = () => {
               </button>
               <button
                 onClick={() => setActiveTab("upload")}
-                className={`group relative px-8 py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
+                className={`group relative w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
                   activeTab === "upload"
                     ? "bg-white text-green-600 shadow-xl hover:shadow-2xl hover:bg-green-50"
                     : "bg-white/20 text-white hover:bg-white/30 hover:shadow-lg backdrop-blur-sm"
@@ -343,7 +343,7 @@ const ResearchPage = () => {
               </button>
               <button
                 onClick={() => setActiveTab("collaboration")}
-                className={`group relative px-8 py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
+                className={`group relative w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
                   activeTab === "collaboration"
                     ? "bg-white text-green-600 shadow-xl hover:shadow-2xl hover:bg-green-50"
                     : "bg-white/20 text-white hover:bg-white/30 hover:shadow-lg backdrop-blur-sm"

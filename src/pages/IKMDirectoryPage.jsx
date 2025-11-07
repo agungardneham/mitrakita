@@ -44,6 +44,23 @@ const dummyIKMData = [
     employees: 45,
     partnerships: 28,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "Mesin UV Coating Model UV-3000",
+        jumlah: 2,
+        kapasitas: "50 unit/jam",
+      },
+      {
+        spesifikasi: "Spray Booth Kabin Semi-Otomatis",
+        jumlah: 1,
+        kapasitas: "30 unit/jam",
+      },
+      {
+        spesifikasi: "Mesin Amplas & Finishing (Sanding)",
+        jumlah: 3,
+        kapasitas: "80 unit/jam",
+      },
+    ],
   },
   {
     id: 2,
@@ -66,6 +83,23 @@ const dummyIKMData = [
     employees: 120,
     partnerships: 45,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "Mesin Tenun (Weaving Machine)",
+        jumlah: 4,
+        kapasitas: "200 m/jam",
+      },
+      {
+        spesifikasi: "Mesin Dyeing (Batch Dyeing)",
+        jumlah: 1,
+        kapasitas: "500 kg/batch",
+      },
+      {
+        spesifikasi: "Mesin Jahit Industri (High-speed Sewing)",
+        jumlah: 8,
+        kapasitas: "100 potong/jam",
+      },
+    ],
   },
   {
     id: 3,
@@ -88,6 +122,23 @@ const dummyIKMData = [
     employees: 85,
     partnerships: 62,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "Mesin CNC Lathe Model CL-500",
+        jumlah: 2,
+        kapasitas: "120 komponen/hari",
+      },
+      {
+        spesifikasi: "Mesin Press Hidrolik 50T",
+        jumlah: 1,
+        kapasitas: "300 press/hari",
+      },
+      {
+        spesifikasi: "Peralatan Las MIG/TIG",
+        jumlah: 4,
+        kapasitas: "Variatif berdasarkan job",
+      },
+    ],
   },
   {
     id: 4,
@@ -110,6 +161,19 @@ const dummyIKMData = [
     employees: 68,
     partnerships: 34,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "Line Produksi Pengemasan 3-lane",
+        jumlah: 1,
+        kapasitas: "10 ton/hari",
+      },
+      {
+        spesifikasi: "Industrial Mixer 500L",
+        jumlah: 2,
+        kapasitas: "500 kg/batch",
+      },
+      { spesifikasi: "Blast Freezer", jumlah: 1, kapasitas: "1000 kg/h" },
+    ],
   },
   {
     id: 5,
@@ -132,6 +196,19 @@ const dummyIKMData = [
     employees: 42,
     partnerships: 19,
     favorited: false,
+    machines: [
+      { spesifikasi: "Mesin Die Cutter", jumlah: 2, kapasitas: "1000 pcs/jam" },
+      {
+        spesifikasi: "Printing Press (Flexo)",
+        jumlah: 1,
+        kapasitas: "200 m/menit",
+      },
+      {
+        spesifikasi: "Laminator Roll-to-Roll",
+        jumlah: 1,
+        kapasitas: "150 m/menit",
+      },
+    ],
   },
   {
     id: 6,
@@ -154,6 +231,19 @@ const dummyIKMData = [
     employees: 56,
     partnerships: 27,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "Reactor Stainless 200L",
+        jumlah: 2,
+        kapasitas: "200 kg/batch",
+      },
+      { spesifikasi: "Mixer Industri", jumlah: 2, kapasitas: "500 kg/batch" },
+      {
+        spesifikasi: "Filling Machine Semi-Automatic",
+        jumlah: 1,
+        kapasitas: "1200 botol/jam",
+      },
+    ],
   },
   {
     id: 7,
@@ -176,6 +266,23 @@ const dummyIKMData = [
     employees: 32,
     partnerships: 15,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "Mesin Tenun Rotan (Semi-Automatic)",
+        jumlah: 3,
+        kapasitas: "150 unit/hari",
+      },
+      {
+        spesifikasi: "Press Pembentuk Rotan",
+        jumlah: 1,
+        kapasitas: "200 unit/hari",
+      },
+      {
+        spesifikasi: "Oven Pengering Skala Kecil",
+        jumlah: 1,
+        kapasitas: "500 kg/hari",
+      },
+    ],
   },
   {
     id: 8,
@@ -198,6 +305,23 @@ const dummyIKMData = [
     employees: 156,
     partnerships: 71,
     favorited: false,
+    machines: [
+      {
+        spesifikasi: "SMT Line (Pick & Place)",
+        jumlah: 2,
+        kapasitas: "2000 PCB/hari",
+      },
+      {
+        spesifikasi: "Wave Soldering Machine",
+        jumlah: 1,
+        kapasitas: "500 PCB/jam",
+      },
+      {
+        spesifikasi: "AOI (Automated Optical Inspection)",
+        jumlah: 1,
+        kapasitas: "2000 PCB/hari",
+      },
+    ],
   },
 ];
 
@@ -1054,7 +1178,75 @@ const IKMDirectoryPage = () => {
                     ))}
                   </div>
                 </div>
-
+                {/* Machines & Equipment */}
+                <div>
+                  <h3
+                    className="text-xl font-bold text-gray-800 mb-4"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Mesin & Peralatan Produksi
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedIkm.machines.map((machine, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-2">
+                              <span className="text-2xl mr-3">⚙️</span>
+                              <h4
+                                className="font-bold text-gray-800"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
+                              >
+                                {machine.spesifikasi}
+                              </h4>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 mt-3">
+                              <div className="flex items-center">
+                                <span className="text-sm text-gray-600 mr-2">
+                                  📊
+                                </span>
+                                <div>
+                                  <p className="text-xs text-gray-500">
+                                    Jumlah Unit
+                                  </p>
+                                  <p
+                                    className="font-semibold text-gray-800"
+                                    style={{
+                                      fontFamily: "Montserrat, sans-serif",
+                                    }}
+                                  >
+                                    {machine.jumlah} Unit
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="text-sm text-gray-600 mr-2">
+                                  ⚡
+                                </span>
+                                <div>
+                                  <p className="text-xs text-gray-500">
+                                    Kapasitas
+                                  </p>
+                                  <p
+                                    className="font-semibold text-blue-600"
+                                    style={{
+                                      fontFamily: "Montserrat, sans-serif",
+                                    }}
+                                  >
+                                    {machine.kapasitas}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 {/* Certifications */}
                 <div>
                   <h3
@@ -1233,22 +1425,55 @@ const IKMDirectoryPage = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="sticky bottom-0 bg-white pt-6 pb-2 border-t border-gray-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Action Buttons: single primary 'Mulai Chat' with WhatsApp icon */}
+                <div className="sticky bottom-0 bg-white pt-6 pb-4 border-t border-gray-200">
+                  <div className="px-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <button
-                      className="bg-gradient-to-r from-green-600 to-green-500 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2"
+                      className="w-full bg-green-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all flex items-center justify-center space-x-3"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
+                      onClick={() => {
+                        // placeholder: open chat action (to be implemented)
+                      }}
+                      aria-label="Chat untuk Bermitra via WhatsApp"
                     >
-                      <Users className="w-5 h-5" />
-                      <span>Ajukan Kemitraan</span>
+                      {/* WhatsApp SVG icon */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-6 h-6"
+                        aria-hidden="true"
+                      >
+                        <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.37 0 .02 5.36.02 12a11.3 11.3 0 001.59 5.6L0 24l6.7-1.74A11.94 11.94 0 0012 24c6.63 0 12-5.36 12-12 0-3.2-1.25-6.2-3.48-8.52zM12 21.5c-1.2 0-2.38-.32-3.42-.93l-.24-.14-3.98 1.02 1.06-3.88-.15-.25A9.5 9.5 0 012.5 12 9.5 9.5 0 0112 2.5c5.24 0 9.5 4.26 9.5 9.5S17.24 21.5 12 21.5z" />
+                        <path d="M17.6 14.2c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15s-.78.98-.96 1.18c-.18.2-.36.22-.66.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2 0-.38-.05-.53-.06-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52l-.58-.01c-.2 0-.53.07-.8.35s-1.05 1.03-1.05 2.5 1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54 3.02 1.3 3.02.87 3.57.82.55-.05 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.58-.35z" />
+                      </svg>
+                      <span>Chat untuk Bermitra</span>
                     </button>
                     <button
-                      className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2"
+                      className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all flex items-center justify-center space-x-3"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
+                      onClick={() => {
+                        // placeholder: open email action (to be implemented)
+                      }}
+                      aria-label="Email untuk Bermitra"
                     >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>Mulai Chat</span>
+                      {/* Mail SVG icon */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        className="w-6 h-6"
+                        aria-hidden="true"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4h16v16H4V4zm0 0l8 8 8-8"
+                        />
+                      </svg>
+                      <span>Email untuk Bermitra</span>
                     </button>
                   </div>
                 </div>

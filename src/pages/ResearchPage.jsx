@@ -3,8 +3,9 @@ import {
   Search,
   Users,
   FileText,
-  MessageSquare,
+  Mail,
   TrendingUp,
+  Clock,
   CheckCircle,
   Building2,
   GraduationCap,
@@ -13,11 +14,12 @@ import {
   Home,
   LayoutDashboard,
   Package,
-  MessageCircle,
+  MessageSquare,
   Star,
   Upload,
   Settings,
   LogOut,
+  MessageCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -32,8 +34,9 @@ const dummyResearchData = [
     institution: "Institut Teknologi Bandung",
     year: 2024,
     field: "Furniture & Kerajinan",
-    type: "Terapan",
-    trl: 7,
+    status: "Sedang Berlangsung",
+    expectedCollab:
+      "Bermitra dengan IKM furniture untuk uji coba skala produksi dan penerapan mesin UV coating; dukungan material, akses lini produksi, dan umpan balik operasional.",
     abstract:
       "Penelitian ini mengembangkan metode finishing furniture menggunakan teknologi UV coating yang lebih efisien dan ramah lingkungan. Hasil uji coba menunjukkan peningkatan kecepatan produksi hingga 40% dengan kualitas hasil yang lebih baik.",
     fullAbstract:
@@ -54,8 +57,9 @@ const dummyResearchData = [
     institution: "Universitas Gadjah Mada",
     year: 2024,
     field: "Tekstil & Garmen",
-    type: "Terapan",
-    trl: 6,
+    status: "Sedang Berlangsung",
+    expectedCollab:
+      "Kolaborasi dengan pabrik garmen untuk uji coba produk pilot, pengujian kenyamanan dan ketahanan pencucian, serta dukungan fasilitas produksi untuk skalabilitas.",
     abstract:
       "Riset ini berhasil mengembangkan tekstil dengan sifat antibakteri alami menggunakan ekstrak daun sirih. Tekstil terbukti efektif membunuh 99.9% bakteri penyebab bau dan aman untuk kulit sensitif.",
     fullAbstract:
@@ -76,8 +80,8 @@ const dummyResearchData = [
     institution: "Institut Teknologi Sepuluh Nopember",
     year: 2023,
     field: "Logam & Metalurgi",
-    type: "Terapan",
-    trl: 8,
+    status: "Selesai",
+
     abstract:
       "Sistem IoT ini memungkinkan monitoring kualitas produksi secara real-time dengan akurasi 95%. Dapat mendeteksi cacat produksi sejak dini dan mengurangi produk gagal hingga 30%.",
     fullAbstract:
@@ -98,8 +102,9 @@ const dummyResearchData = [
     institution: "Universitas Brawijaya",
     year: 2024,
     field: "Kemasan & Packaging",
-    type: "Terapan",
-    trl: 6,
+    status: "Sedang Berlangsung",
+    expectedCollab:
+      "Kerja sama dengan produsen makanan untuk pengujian kemasan pada produk nyata, uji keamanan pangan, serta pasokan limbah kulit singkong sebagai bahan baku dan optimasi proses produksi.",
     abstract:
       "Kemasan ramah lingkungan dari kulit singkong yang dapat terurai dalam 90 hari. Kekuatan dan ketahanan air setara dengan plastik konvensional namun 100% biodegradable.",
     fullAbstract:
@@ -120,8 +125,8 @@ const dummyResearchData = [
     institution: "Universitas Airlangga",
     year: 2023,
     field: "Makanan & Minuman",
-    type: "Dasar",
-    trl: 5,
+    status: "Selesai",
+
     abstract:
       "Penelitian tentang enzim alami dari buah-buahan tropis yang dapat memperpanjang masa simpan produk makanan hingga 200% tanpa pengawet kimia.",
     fullAbstract:
@@ -142,8 +147,9 @@ const dummyResearchData = [
     institution: "Universitas Indonesia",
     year: 2024,
     field: "Tekstil & Garmen",
-    type: "Terapan",
-    trl: 7,
+    status: "Sedang Berlangsung",
+    expectedCollab:
+      "Akses data penjualan historis dari IKM tekstil, kerja sama implementasi di lini produksi, dan umpan balik operasional untuk meningkatkan akurasi model dan integrasi ke proses bisnis.",
     abstract:
       "Sistem AI yang dapat memprediksi permintaan pasar dengan akurasi 87%, membantu IKM mengurangi overstock hingga 40% dan meningkatkan efisiensi produksi.",
     fullAbstract:
@@ -167,6 +173,23 @@ const dummyCollaborationIKM = [
     status: "Aktif",
     research: "Optimalisasi Proses Finishing",
     progress: 75,
+    machines: [
+      {
+        spesifikasi: "Mesin UV Coating Model UV-3000",
+        jumlah: 2,
+        kapasitas: "50 unit/jam",
+      },
+      {
+        spesifikasi: "Spray Booth Kabin Semi-Otomatis",
+        jumlah: 1,
+        kapasitas: "30 unit/jam",
+      },
+      {
+        spesifikasi: "Mesin Amplas & Finishing (Sanding)",
+        jumlah: 3,
+        kapasitas: "80 unit/jam",
+      },
+    ],
   },
   {
     id: 2,
@@ -175,6 +198,23 @@ const dummyCollaborationIKM = [
     status: "Diajukan",
     research: "Tekstil Antibakteri",
     progress: 15,
+    machines: [
+      {
+        spesifikasi: "Mesin Tenun Jalanan (Weaving Machine)",
+        jumlah: 4,
+        kapasitas: "200 m/jam",
+      },
+      {
+        spesifikasi: "Mesin Dyeing (Batch Dyeing)",
+        jumlah: 1,
+        kapasitas: "500 kg/batch",
+      },
+      {
+        spesifikasi: "Mesin Jahit Industri (High-speed Sewing)",
+        jumlah: 8,
+        kapasitas: "100 potong/jam",
+      },
+    ],
   },
   {
     id: 3,
@@ -183,21 +223,40 @@ const dummyCollaborationIKM = [
     status: "Selesai",
     research: "Sistem Monitoring IoT",
     progress: 100,
+    machines: [
+      {
+        spesifikasi: "Mesin CNC Lathe Model CL-500",
+        jumlah: 2,
+        kapasitas: "120 komponen/hari",
+      },
+      {
+        spesifikasi: "Mesin Press Hidrolik 50T",
+        jumlah: 1,
+        kapasitas: "300 press/hari",
+      },
+      {
+        spesifikasi: "Peralatan Las MIG/TIG",
+        jumlah: 4,
+        kapasitas: "— (kapasitas tergantung job)",
+      },
+    ],
   },
 ];
 
 const ResearchPage = () => {
-  const [activeTab, setActiveTab] = useState("feed"); // feed, upload, collaboration
+  const [activeTab, setActiveTab] = useState("feed"); // feed, upload
   const [researchList] = useState(dummyResearchData);
   const [filteredResearch, setFilteredResearch] = useState(dummyResearchData);
   const [selectedResearch, setSelectedResearch] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedField, setSelectedField] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const [expectedCollab, setExpectedCollab] = useState("");
 
   const fields = [
     "Semua",
@@ -208,7 +267,7 @@ const ResearchPage = () => {
     "Makanan & Minuman",
   ];
   const years = ["Semua", "2024", "2023", "2022", "2021"];
-  const types = ["Semua", "Terapan", "Dasar", "Eksperimental"];
+  const statuses = ["Semua", "Sedang Berlangsung", "Selesai"];
 
   // Filter Research
   const applyFilters = () => {
@@ -234,8 +293,10 @@ const ResearchPage = () => {
       );
     }
 
-    if (selectedType && selectedType !== "Semua") {
-      filtered = filtered.filter((research) => research.type === selectedType);
+    if (selectedStatus && selectedStatus !== "Semua") {
+      filtered = filtered.filter(
+        (research) => research.status === selectedStatus
+      );
     }
 
     // Sorting
@@ -254,7 +315,7 @@ const ResearchPage = () => {
     setSearchQuery("");
     setSelectedField("");
     setSelectedYear("");
-    setSelectedType("");
+    setSelectedStatus("");
     setSortBy("newest");
     setFilteredResearch(researchList);
   };
@@ -275,7 +336,7 @@ const ResearchPage = () => {
       <Navbar />
       <div className="bg-green-50 min-h-screen">
         {/* Hero Header */}
-        <div className="bg-gradient-to-br from-green-600 via-green-500 to-blue-600 text-white py-12 md:py-16">
+        <div className="bg-linear-to-br from-green-600 via-green-500 to-blue-600 text-white py-12 md:py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1
               className="text-4xl md:text-5xl font-bold mb-4 text-center"
@@ -336,30 +397,6 @@ const ResearchPage = () => {
                 <div
                   className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
                     activeTab === "upload"
-                      ? "opacity-0"
-                      : "opacity-0 group-hover:opacity-100 bg-white/5"
-                  }`}
-                />
-              </button>
-              <button
-                onClick={() => setActiveTab("collaboration")}
-                className={`group relative w-full sm:w-auto px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 ${
-                  activeTab === "collaboration"
-                    ? "bg-white text-green-600 shadow-xl hover:shadow-2xl hover:bg-green-50"
-                    : "bg-white/20 text-white hover:bg-white/30 hover:shadow-lg backdrop-blur-sm"
-                }`}
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                <div className="flex items-center space-x-2">
-                  <span className="text-xl">🤝</span>
-                  <span>Kolaborasi</span>
-                </div>
-                {activeTab === "collaboration" && (
-                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-green-500 rounded-full" />
-                )}
-                <div
-                  className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-                    activeTab === "collaboration"
                       ? "opacity-0"
                       : "opacity-0 group-hover:opacity-100 bg-white/5"
                   }`}
@@ -464,17 +501,20 @@ const ResearchPage = () => {
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Jenis Penelitian
+                    Status Penelitian
                   </label>
                   <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {types.map((type) => (
-                      <option key={type} value={type === "Semua" ? "" : type}>
-                        {type}
+                    {statuses.map((status) => (
+                      <option
+                        key={status}
+                        value={status === "Semua" ? "" : status}
+                      >
+                        {status}
                       </option>
                     ))}
                   </select>
@@ -618,22 +658,38 @@ const ResearchPage = () => {
                       </p>
                     </div>
 
-                    {/* Abstract */}
-                    <p
-                      className="text-sm text-gray-600 mb-4 line-clamp-3"
-                      style={{ fontFamily: "Open Sans, sans-serif" }}
-                    >
-                      {research.abstract}
-                    </p>
+                    {/* Abstract or Expected Collaboration for ongoing research */}
+                    {research.status === "Sedang Berlangsung" ? (
+                      <p
+                        className="text-sm text-gray-600 mb-4 line-clamp-3"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        <strong>Kolaborasi yang Diharapkan: </strong>
+                        {research.expectedCollab ||
+                          "Belum ada kolaborasi yang diharapkan."}
+                      </p>
+                    ) : (
+                      <p
+                        className="text-sm text-gray-600 mb-4 line-clamp-3"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        {research.abstract}
+                      </p>
+                    )}
 
-                    {/* TRL Badge */}
+                    {/* Status Badge */}
                     <div className="flex items-center space-x-2 mb-4">
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-semibold">
-                        TRL {research.trl}/9
-                      </span>
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg font-semibold">
-                        {research.type}
-                      </span>
+                      {research.status === "Selesai" ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-semibold inline-flex items-center">
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Selesai
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg font-semibold inline-flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          Sedang Berlangsung
+                        </span>
+                      )}
                     </div>
 
                     {/* Stats */}
@@ -646,7 +702,7 @@ const ResearchPage = () => {
                     {/* Button */}
                     <button
                       onClick={() => setSelectedResearch(research)}
-                      className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
+                      className="w-full bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
                       Lihat Detail
@@ -668,7 +724,6 @@ const ResearchPage = () => {
               >
                 Unggah Hasil Penelitian
               </h2>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6"></div>
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
                 <p
                   className="text-blue-800 text-sm"
@@ -722,27 +777,30 @@ const ResearchPage = () => {
                   </select>
                 </div>
 
-                {/* Jenis Penelitian & Tahun */}
+                {/* Status Penelitian & Tahun */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label
                       className="block text-gray-700 font-semibold mb-2"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      Jenis Penelitian <span className="text-red-500">*</span>
+                      Status Penelitian <span className="text-red-500">*</span>
                     </label>
                     <select
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                       required
+                      value={uploadStatus}
+                      onChange={(e) => setUploadStatus(e.target.value)}
                     >
-                      <option value="">Pilih jenis</option>
-                      <option value="applied">Terapan</option>
-                      <option value="basic">Dasar</option>
-                      <option value="experimental">Eksperimental</option>
-                      <option value="development">Pengembangan</option>
+                      <option value="">Pilih status</option>
+                      <option value="Sedang Berlangsung">
+                        Sedang Berlangsung
+                      </option>
+                      <option value="Selesai">Selesai</option>
                     </select>
                   </div>
+
                   <div>
                     <label
                       className="block text-gray-700 font-semibold mb-2"
@@ -762,49 +820,25 @@ const ResearchPage = () => {
                   </div>
                 </div>
 
-                {/* TRL Level */}
-                <div>
-                  <label
-                    className="block text-gray-700 font-semibold mb-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Technology Readiness Level (TRL){" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                    required
-                  >
-                    <option value="">Pilih TRL Level</option>
-                    <option value="1">TRL 1 - Prinsip dasar diamati</option>
-                    <option value="2">
-                      TRL 2 - Konsep teknologi diformulasikan
-                    </option>
-                    <option value="3">
-                      TRL 3 - Proof of concept eksperimental
-                    </option>
-                    <option value="4">
-                      TRL 4 - Validasi teknologi di laboratorium
-                    </option>
-                    <option value="5">
-                      TRL 5 - Validasi teknologi di lingkungan relevan
-                    </option>
-                    <option value="6">
-                      TRL 6 - Demonstrasi teknologi di lingkungan relevan
-                    </option>
-                    <option value="7">
-                      TRL 7 - Demonstrasi prototipe di lingkungan operasional
-                    </option>
-                    <option value="8">
-                      TRL 8 - Sistem lengkap dan dikualifikasi
-                    </option>
-                    <option value="9">
-                      TRL 9 - Sistem terbukti di lingkungan operasional
-                    </option>
-                  </select>
-                </div>
-
+                {/* TRL removed per request */}
+                {uploadStatus === "Sedang Berlangsung" && (
+                  <div className="mt-4">
+                    <label
+                      className="block text-gray-700 font-semibold mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Kolaborasi yang Diharapkan
+                    </label>
+                    <textarea
+                      rows={4}
+                      placeholder="Jelaskan bentuk kolaborasi yang diharapkan (opsional)"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      value={expectedCollab}
+                      onChange={(e) => setExpectedCollab(e.target.value)}
+                    />
+                  </div>
+                )}
                 {/* Abstrak */}
                 <div>
                   <label
@@ -849,7 +883,8 @@ const ResearchPage = () => {
                     className="block text-gray-700 font-semibold mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Upload Dokumen PDF <span className="text-red-500">*</span>
+                    Upload Dokumen Abstrak (.pdf){" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-500 transition cursor-pointer">
                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -885,7 +920,7 @@ const ResearchPage = () => {
                 <div className="flex space-x-4">
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-green-600 to-green-500 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all"
+                    className="flex-1 bg-linear-to-r from-green-600 to-green-500 text-white py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
                     Kirim untuk Verifikasi
@@ -903,123 +938,7 @@ const ResearchPage = () => {
           </div>
         )}
 
-        {/* Collaboration Tab */}
-        {activeTab === "collaboration" && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div className="mb-8">
-              <h2
-                className="text-3xl font-bold text-gray-800 mb-4"
-                style={{ fontFamily: "Poppins, sans-serif" }}
-              >
-                Kolaborasi Penelitian dengan IKM
-              </h2>
-              <p
-                className="text-gray-600 text-lg"
-                style={{ fontFamily: "Open Sans, sans-serif" }}
-              >
-                Jalin kemitraan riset dengan IKM untuk mengimplementasikan hasil
-                penelitian Anda
-              </p>
-            </div>
-
-            {/* Collaboration Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {dummyCollaborationIKM.map((collab) => (
-                <div
-                  key={collab.id}
-                  className="bg-white rounded-2xl shadow-lg p-6"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <h3
-                      className="text-lg font-bold text-gray-800"
-                      style={{ fontFamily: "Poppins, sans-serif" }}
-                    >
-                      {collab.name}
-                    </h3>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        collab.status === "Aktif"
-                          ? "bg-green-100 text-green-700"
-                          : collab.status === "Diajukan"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {collab.status}
-                    </span>
-                  </div>
-
-                  <p
-                    className="text-sm text-gray-600 mb-3"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                  >
-                    <strong>Bidang:</strong> {collab.field}
-                  </p>
-
-                  <p
-                    className="text-sm text-gray-600 mb-4"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                  >
-                    <strong>Penelitian:</strong> {collab.research}
-                  </p>
-
-                  {/* Progress Bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs text-gray-600 mb-2">
-                      <span>Progress</span>
-                      <span>{collab.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${
-                          collab.status === "Selesai"
-                            ? "bg-blue-600"
-                            : collab.status === "Aktif"
-                            ? "bg-green-600"
-                            : "bg-yellow-600"
-                        }`}
-                        style={{ width: `${collab.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <button
-                    className="w-full bg-green-600 text-white py-2 rounded-xl font-semibold hover:bg-green-700 transition"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    {collab.status === "Selesai"
-                      ? "Lihat Laporan"
-                      : "Lihat Detail"}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Propose New Collaboration */}
-            <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-2xl p-8 text-white">
-              <h3
-                className="text-2xl font-bold mb-4"
-                style={{ fontFamily: "Poppins, sans-serif" }}
-              >
-                Ajukan Kolaborasi Baru
-              </h3>
-              <p
-                className="text-green-50 mb-6"
-                style={{ fontFamily: "Open Sans, sans-serif" }}
-              >
-                Ingin mengajukan penelitian bersama dengan IKM? Kami akan
-                membantu mencarikan mitra yang sesuai dengan bidang penelitian
-                Anda.
-              </p>
-              <button
-                className="bg-white text-green-600 px-8 py-3 rounded-xl font-bold hover:shadow-xl transition"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                Ajukan Kolaborasi Baru
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Collaboration tab removed — only 'feed' and 'upload' remain */}
 
         {/* Research Detail Modal */}
         {selectedResearch && (
@@ -1032,7 +951,7 @@ const ResearchPage = () => {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 bg-gradient-to-r from-green-600 to-blue-600 text-white p-6 rounded-t-2xl">
+              <div className="sticky top-0 bg-linear-to-r from-green-600 to-blue-600 text-white p-6 rounded-t-2xl">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 pr-4">
                     <h2
@@ -1049,7 +968,7 @@ const ResearchPage = () => {
                   </div>
                   <button
                     onClick={() => setSelectedResearch(null)}
-                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition flex-shrink-0"
+                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition shrink-0"
                   >
                     <X className="w-6 h-6" />
                   </button>
@@ -1060,57 +979,78 @@ const ResearchPage = () => {
               <div className="p-6 space-y-6">
                 {/* Quick Info */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-green-50 rounded-xl p-4 text-center">
+                  <div className="bg-green-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
                     <p
-                      className="text-2xl font-bold text-green-600"
+                      className="text-xl font-bold text-green-600 leading-tight"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
                       {selectedResearch.views}
                     </p>
                     <p
-                      className="text-xs text-gray-600"
+                      className="text-xs text-gray-600 mt-1"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                     >
                       Views
                     </p>
                   </div>
-                  <div className="bg-blue-50 rounded-xl p-4 text-center">
+                  <div className="bg-blue-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
                     <p
-                      className="text-2xl font-bold text-blue-600"
+                      className="text-xl font-bold text-blue-600 leading-tight"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
                       {selectedResearch.downloads}
                     </p>
                     <p
-                      className="text-xs text-gray-600"
+                      className="text-xs text-gray-600 mt-1"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                     >
                       Downloads
                     </p>
                   </div>
-                  <div className="bg-yellow-50 rounded-xl p-4 text-center">
-                    <p
-                      className="text-2xl font-bold text-yellow-600"
-                      style={{ fontFamily: "Poppins, sans-serif" }}
+                  <div
+                    className={`rounded-xl p-4 text-center flex flex-col items-center justify-center ${
+                      selectedResearch.status === "Selesai"
+                        ? "bg-green-50"
+                        : "bg-yellow-50"
+                    }`}
+                  >
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-lg font-semibold text-xs mt-1 mb-1 ${
+                        selectedResearch.status === "Selesai"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}
+                      style={{
+                        fontFamily: "Montserrat, sans-serif",
+                        maxWidth: "100%",
+                        whiteSpace: "normal",
+                        overflowWrap: "anywhere",
+                        textAlign: "center",
+                      }}
                     >
-                      TRL {selectedResearch.trl}
-                    </p>
+                      {selectedResearch.status === "Selesai" ? (
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                      ) : (
+                        <Clock className="w-4 h-4 mr-1" />
+                      )}
+                      <span>{selectedResearch.status}</span>
+                    </span>
                     <p
                       className="text-xs text-gray-600"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                     >
-                      Readiness
+                      Status
                     </p>
                   </div>
-                  <div className="bg-purple-50 rounded-xl p-4 text-center">
+                  <div className="bg-purple-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
                     <p
-                      className="text-2xl font-bold text-purple-600"
+                      className="text-xl font-bold text-purple-600 leading-tight"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
                       {selectedResearch.collaborations}
                     </p>
                     <p
-                      className="text-xs text-gray-600"
+                      className="text-xs text-gray-600 mt-1"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                     >
                       Kolaborasi
@@ -1124,7 +1064,7 @@ const ResearchPage = () => {
                     {selectedResearch.field}
                   </span>
                   <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
-                    {selectedResearch.type}
+                    {selectedResearch.status}
                   </span>
                   {selectedResearch.keywords.map((keyword, idx) => (
                     <span
@@ -1153,7 +1093,7 @@ const ResearchPage = () => {
                 </div>
 
                 {/* AI Summary Section */}
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border-2 border-purple-200">
+                <div className="bg-linear-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border-2 border-purple-200">
                   <div className="flex items-center justify-between mb-4">
                     <h3
                       className="text-xl font-bold text-gray-800 flex items-center"
@@ -1202,16 +1142,13 @@ const ResearchPage = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Top: full-width Download button */}
+                <div className="mb-4">
                   <button
-                    className="bg-gradient-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    <span>Chat Akademisi</span>
-                  </button>
-                  <button
-                    className="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
+                    onClick={() => {
+                      /* TODO: implement download action */
+                    }}
+                    className="w-full bg-linear-to-r from-blue-600 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
                     <FileText className="w-5 h-5" />
@@ -1219,13 +1156,38 @@ const ResearchPage = () => {
                   </button>
                 </div>
 
-                <button
-                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 text-gray-800 py-4 rounded-xl font-bold hover:shadow-lg transition flex items-center justify-center space-x-2"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
-                  <Users className="w-5 h-5" />
-                  <span>Ajukan Kolaborasi Penelitian</span>
-                </button>
+                {/* Bottom: two buttons - Chat (left) and Email (right) */}
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => {
+                      /* TODO: implement chat action */
+                    }}
+                    className="bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
+                    style={{ fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="w-6 h-6"
+                      aria-hidden="true"
+                    >
+                      <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.37 0 .02 5.36.02 12a11.3 11.3 0 001.59 5.6L0 24l6.7-1.74A11.94 11.94 0 0012 24c6.63 0 12-5.36 12-12 0-3.2-1.25-6.2-3.48-8.52zM12 21.5c-1.2 0-2.38-.32-3.42-.93l-.24-.14-3.98 1.02 1.06-3.88-.15-.25A9.5 9.5 0 012.5 12 9.5 9.5 0 0112 2.5c5.24 0 9.5 4.26 9.5 9.5S17.24 21.5 12 21.5z" />
+                      <path d="M17.6 14.2c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15s-.78.98-.96 1.18c-.18.2-.36.22-.66.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2 0-.38-.05-.53-.06-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52l-.58-.01c-.2 0-.53.07-.8.35s-1.05 1.03-1.05 2.5 1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54 3.02 1.3 3.02.87 3.57.82.55-.05 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.58-.35z" />
+                    </svg>
+                    <span>Chat Akademisi</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      /* TODO: implement email action */
+                    }}
+                    className="bg-linear-to-r from-indigo-600 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
+                    style={{ fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    <Mail className="w-5 h-5" />
+                    <span>Email Akademisi</span>
+                  </button>
+                </div>
 
                 {/* Comments Section (Placeholder) */}
                 <div className="border-t border-gray-200 pt-6">

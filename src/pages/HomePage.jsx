@@ -34,22 +34,10 @@ const HomePage = ({ onNavigate }) => {
         "Akses database IKM yang telah diverifikasi dengan informasi produk dan layanan lengkap",
     },
     {
-      icon: <MessageSquare className="w-8 h-8 text-blue-600" />,
-      title: "Komunikasi Langsung",
-      description:
-        "Chat real-time dengan mitra potensial untuk membangun kolaborasi yang efektif",
-    },
-    {
       icon: <FileText className="w-8 h-8 text-yellow-600" />,
       title: "Hasil Penelitian",
       description:
         "Akses repository penelitian akademis dengan ringkasan AI untuk inovasi industri",
-    },
-    {
-      icon: <TrendingUp className="w-8 h-8 text-green-600" />,
-      title: "Tracking Kemitraan",
-      description:
-        "Pantau progress kolaborasi dari order hingga pengiriman secara transparan",
     },
     {
       icon: <Star className="w-8 h-8 text-yellow-500" />,
@@ -173,11 +161,11 @@ const HomePage = ({ onNavigate }) => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {features.map((feature, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all hover:-translate-y-1"
+                className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition-all hover:-translate-y-1 flex flex-col items-center text-center"
               >
                 <div className="mb-4">{feature.icon}</div>
                 <h3

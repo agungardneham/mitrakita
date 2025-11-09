@@ -23,7 +23,7 @@ const LoginPage = ({ setUserRole }) => {
     {
       id: "user",
       title: "Pengguna Umum",
-      subtitle: "Industri Besar / Pencari Mitra",
+      subtitle: "Industri Pencari Mitra / User",
       icon: <Users className="w-8 h-8" />,
       gradient: "from-blue-600 to-blue-500",
       description: "Untuk industri besar atau pencari produk dan layanan IKM",

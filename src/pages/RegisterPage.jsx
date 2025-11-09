@@ -36,7 +36,9 @@ const RegisterPage = () => {
     // IKM specific
     businessName: "",
     businessType: "",
-    address: "",
+    officeAddress: "",
+    factoryAdress: "",
+    sameAddress: false,
     province: "",
     city: "",
     npwp: "",
@@ -45,9 +47,13 @@ const RegisterPage = () => {
     // User specific
     fullName: "",
     companyName: "",
-    position: "",
+    products: "",
+    needs: "",
 
     // Academician specific
+    academicianName: "",
+    frontDegree: "",
+    backDegree: "",
     institution: "",
     department: "",
     nidn: "",
@@ -67,7 +73,7 @@ const RegisterPage = () => {
     {
       id: "user",
       title: "Pengguna Umum",
-      subtitle: "Industri Besar / Pencari Mitra",
+      subtitle: "Industri Pencari Mitra / User",
       icon: <Users className="w-8 h-8" />,
       gradient: "from-blue-600 to-blue-500",
       description: "Cari dan hubungi IKM untuk kebutuhan produk dan layanan",
@@ -98,6 +104,11 @@ const RegisterPage = () => {
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
       alert("Password tidak cocok!");
+      return;
+    }
+    // Validate phone required for ikm and academician
+    if (selectedRole !== "user" && !formData.phone) {
+      alert("Nomor telepon wajib diisi untuk peran IKM dan Akademisi.");
       return;
     }
     // In real app: send to backend API
@@ -299,7 +310,10 @@ const RegisterPage = () => {
                       className="block text-gray-700 font-semibold mb-2"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      Nomor Telepon <span className="text-red-500">*</span>
+                      Nomor Telepon{" "}
+                      {selectedRole !== "user" && (
+                        <span className="text-red-500">*</span>
+                      )}
                     </label>
                     <input
                       type="tel"
@@ -310,8 +324,13 @@ const RegisterPage = () => {
                       placeholder="08123456789"
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
-                      required
+                      required={selectedRole !== "user"}
                     />
+                    {selectedRole === "user" && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nomor telepon bersifat opsional untuk pengguna umum.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -360,7 +379,7 @@ const RegisterPage = () => {
 
                 {/* IKM Specific Fields */}
                 {selectedRole === "ikm" && (
-                  <>
+                  <div>
                     <div className="border-t border-gray-200 pt-6">
                       <h3
                         className="text-lg font-bold text-gray-800 mb-4"
@@ -419,15 +438,15 @@ const RegisterPage = () => {
                     </div>
                     <div>
                       <label
-                        className="block text-gray-700 font-semibold mb-2"
+                        className="block text-gray-700 font-semibold mb-2 mt-6"
                         style={{ fontFamily: "Montserrat, sans-serif" }}
                       >
-                        Alamat Lengkap <span className="text-red-500">*</span>
+                        Alamat Kantor <span className="text-red-500">*</span>
                       </label>
                       <textarea
-                        value={formData.address}
+                        value={formData.officeAddress}
                         onChange={(e) =>
-                          handleInputChange("address", e.target.value)
+                          handleInputChange("officeAddress", e.target.value)
                         }
                         placeholder="Jalan, Kelurahan, Kecamatan"
                         rows={3}
@@ -436,25 +455,61 @@ const RegisterPage = () => {
                         required
                       />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label
-                          className="block text-gray-700 font-semibold mb-2"
-                          style={{ fontFamily: "Montserrat, sans-serif" }}
-                        >
-                          NPWP
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.npwp}
-                          onChange={(e) =>
-                            handleInputChange("npwp", e.target.value)
+
+                    <div className="mt-6">
+                      <label
+                        className="block text-gray-700 font-semibold mb-2"
+                        style={{ fontFamily: "Montserrat, sans-serif" }}
+                      >
+                        Alamat Pabrik <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={formData.factoryAddress}
+                        onChange={(e) =>
+                          handleInputChange("factoryAddress", e.target.value)
+                        }
+                        placeholder="Jalan, Kelurahan, Kecamatan"
+                        rows={3}
+                        disabled={formData.sameAddress}
+                        className={`w-full px-4 py-3 rounded-xl border-2 ${
+                          formData.sameAddress
+                            ? "bg-gray-100 border-gray-200"
+                            : "border-gray-300"
+                        } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                        required
+                      />
+                    </div>
+
+                    {/* Checkbox sinkronisasi */}
+                    <div className="flex items-center mt-3 mb-6">
+                      <input
+                        type="checkbox"
+                        id="sameAddress"
+                        checked={formData.sameAddress}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          handleInputChange("sameAddress", checked);
+                          if (checked) {
+                            // Jika dicentang, salin alamat kantor ke alamat pabrik
+                            handleInputChange(
+                              "factoryAddress",
+                              formData.officeAddress
+                            );
                           }
-                          placeholder="00.000.000.0-000.000"
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                          style={{ fontFamily: "Open Sans, sans-serif" }}
-                        />
-                      </div>
+                        }}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="sameAddress"
+                        className="ml-2 text-gray-700"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Alamat pabrik sama dengan alamat kantor
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label
                           className="block text-gray-700 font-semibold mb-2"
@@ -474,7 +529,7 @@ const RegisterPage = () => {
                         />
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {/* User Specific Fields */}
@@ -533,15 +588,36 @@ const RegisterPage = () => {
                           className="block text-gray-700 font-semibold mb-2"
                           style={{ fontFamily: "Montserrat, sans-serif" }}
                         >
-                          Jabatan <span className="text-red-500">*</span>
+                          Produk yang dihasilkan{" "}
+                          <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
-                          value={formData.position}
+                          value={formData.products}
                           onChange={(e) =>
-                            handleInputChange("position", e.target.value)
+                            handleInputChange("products", e.target.value)
                           }
-                          placeholder="Jabatan di perusahaan"
+                          placeholder="Produk yang dihasilkan oleh perusahaan Anda"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Produk / Layanan yang Dibutuhkan{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.needs}
+                          onChange={(e) =>
+                            handleInputChange("needs", e.target.value)
+                          }
+                          placeholder="Produk/layanan yang Anda cari dari IKM"
                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                           required
@@ -560,6 +636,63 @@ const RegisterPage = () => {
                       >
                         Informasi Akademisi
                       </h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Nama Lengkap <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.academicianName}
+                          onChange={(e) =>
+                            handleInputChange("academicianName", e.target.value)
+                          }
+                          placeholder="Nama lengkap Anda tanpa gelar"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Gelar Depan
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.frontDegree}
+                          onChange={(e) =>
+                            handleInputChange("frontDegree", e.target.value)
+                          }
+                          placeholder="Gelar depan, misal: Dr., Ir., dsb."
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Gelar Belakang
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.backDegree}
+                          onChange={(e) =>
+                            handleInputChange("backDegree", e.target.value)
+                          }
+                          placeholder="Gelar belakang, misal: M.Sc., Ph.D., dsb."
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -605,7 +738,7 @@ const RegisterPage = () => {
                           className="block text-gray-700 font-semibold mb-2"
                           style={{ fontFamily: "Montserrat, sans-serif" }}
                         >
-                          NIDN <span className="text-red-500">*</span>
+                          NIDN (opsional){" "}
                         </label>
                         <input
                           type="text"
@@ -616,7 +749,6 @@ const RegisterPage = () => {
                           placeholder="Nomor Induk Dosen Nasional"
                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                           style={{ fontFamily: "Open Sans, sans-serif" }}
-                          required
                         />
                       </div>
                       <div>

@@ -31,7 +31,11 @@ const dummyIKMData = [
     category: "Furniture & Kerajinan",
     rating: 4.8,
     reviewCount: 124,
-    products: ["Kursi Jati", "Meja Kayu", "Lemari Custom"],
+    products: [
+      { name: "Kursi Jati", capacity: "200 unit/bulan" },
+      { name: "Meja Kayu", capacity: "150 unit/bulan" },
+      { name: "Lemari Custom", capacity: "80 unit/bulan" },
+    ],
     description:
       "Produsen furniture berkualitas tinggi dengan pengalaman lebih dari 15 tahun. Menggunakan kayu jati pilihan dan craftmanship terbaik.",
     email: "info@furniturejaya.com",
@@ -70,7 +74,11 @@ const dummyIKMData = [
     category: "Tekstil & Garmen",
     rating: 4.6,
     reviewCount: 89,
-    products: ["Kain Batik", "Seragam Kerja", "Textile Custom"],
+    products: [
+      { name: "Kain Batik", capacity: "5000 meter/bulan" },
+      { name: "Seragam Kerja", capacity: "3000 set/bulan" },
+      { name: "Textile Custom", capacity: "2000 meter/bulan" },
+    ],
     description:
       "Spesialis produksi tekstil dan garmen dengan teknologi modern. Melayani order dalam jumlah besar untuk korporasi.",
     email: "order@tekstilnusantara.com",
@@ -109,7 +117,11 @@ const dummyIKMData = [
     category: "Logam & Metalurgi",
     rating: 4.9,
     reviewCount: 156,
-    products: ["Komponen Mesin", "Spare Part", "Custom Fabrication"],
+    products: [
+      { name: "Komponen Mesin", capacity: "1000 unit/bulan" },
+      { name: "Spare Part", capacity: "2500 unit/bulan" },
+      { name: "Custom Fabrication", capacity: "500 unit/bulan" },
+    ],
     description:
       "Manufaktur komponen logam presisi tinggi dengan mesin CNC modern. Partner terpercaya industri otomotif dan manufaktur.",
     email: "sales@logampresisi.co.id",
@@ -148,7 +160,11 @@ const dummyIKMData = [
     category: "Makanan & Minuman",
     rating: 4.7,
     reviewCount: 203,
-    products: ["Snack Tradisional", "Catering", "Frozen Food"],
+    products: [
+      { name: "Snack Tradisional", capacity: "15 ton/bulan" },
+      { name: "Catering", capacity: "500 porsi/hari" },
+      { name: "Frozen Food", capacity: "10 ton/bulan" },
+    ],
     description:
       "Produsen makanan dan minuman dengan sertifikasi halal dan BPOM. Kapasitas produksi 10 ton per hari.",
     email: "info@makananberkah.id",
@@ -183,7 +199,11 @@ const dummyIKMData = [
     category: "Kemasan & Packaging",
     rating: 4.5,
     reviewCount: 78,
-    products: ["Box Karton", "Plastik Kemasan", "Label Custom"],
+    products: [
+      { name: "Box Karton", capacity: "50,000 pcs/bulan" },
+      { name: "Plastik Kemasan", capacity: "100,000 pcs/bulan" },
+      { name: "Label Custom", capacity: "200,000 pcs/bulan" },
+    ],
     description:
       "Spesialis packaging custom dengan desain menarik. Melayani industri F&B, kosmetik, dan retail.",
     email: "order@kemasankreatif.com",
@@ -218,7 +238,11 @@ const dummyIKMData = [
     category: "Kimia & Farmasi",
     rating: 4.8,
     reviewCount: 92,
-    products: ["Bahan Pembersih", "Deterjen Industri", "Sabun Cair"],
+    products: [
+      { name: "Bahan Pembersih", capacity: "20 ton/bulan" },
+      { name: "Deterjen Industri", capacity: "25 ton/bulan" },
+      { name: "Sabun Cair", capacity: "30,000 liter/bulan" },
+    ],
     description:
       "Produsen produk kimia rumah tangga dan industri dengan standar keamanan tinggi.",
     email: "cs@kimiasejahtera.co.id",
@@ -253,7 +277,11 @@ const dummyIKMData = [
     category: "Furniture & Kerajinan",
     rating: 4.6,
     reviewCount: 67,
-    products: ["Keranjang Rotan", "Furniture Rotan", "Dekorasi"],
+    products: [
+      { name: "Keranjang Rotan", capacity: "400 unit/bulan" },
+      { name: "Furniture Rotan", capacity: "150 unit/bulan" },
+      { name: "Dekorasi", capacity: "600 unit/bulan" },
+    ],
     description:
       "Kerajinan rotan handmade dengan kualitas ekspor. Mengerjakan custom design sesuai kebutuhan.",
     email: "info@rotanasli.com",
@@ -292,7 +320,11 @@ const dummyIKMData = [
     category: "Elektronik & Komponen",
     rating: 4.7,
     reviewCount: 134,
-    products: ["PCB Assembly", "Komponen Elektronik", "Wiring Harness"],
+    products: [
+      { name: "PCB Assembly", capacity: "40,000 unit/bulan" },
+      { name: "Komponen Elektronik", capacity: "100,000 unit/bulan" },
+      { name: "Wiring Harness", capacity: "25,000 unit/bulan" },
+    ],
     description:
       "Manufaktur komponen elektronik untuk industri otomotif dan elektronik konsumer.",
     email: "sales@elektronikmandiri.id",
@@ -754,7 +786,7 @@ const IKMDirectoryPage = () => {
                             className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg"
                             style={{ fontFamily: "Open Sans, sans-serif" }}
                           >
-                            {product}
+                            {product.name}
                           </span>
                         ))}
                       </div>
@@ -1172,81 +1204,90 @@ const IKMDirectoryPage = () => {
                           className="font-semibold text-gray-800 text-center"
                           style={{ fontFamily: "Montserrat, sans-serif" }}
                         >
-                          {product}
+                          {product.name}
                         </h4>
+                        <p className="text-center text-gray-600 mb-2 md:text-l lg:text-xl">
+                          <span className="block md:inline-block">
+                            {product.capacity}
+                          </span>
+                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
                 {/* Machines & Equipment */}
-                <div>
-                  <h3
-                    className="text-xl font-bold text-gray-800 mb-4"
-                    style={{ fontFamily: "Poppins, sans-serif" }}
-                  >
-                    Mesin & Peralatan Produksi
-                  </h3>
-                  <div className="space-y-3">
-                    {selectedIkm.machines.map((machine, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center mb-2">
-                              <span className="text-2xl mr-3">⚙️</span>
-                              <h4
-                                className="font-bold text-gray-800"
-                                style={{ fontFamily: "Montserrat, sans-serif" }}
-                              >
-                                {machine.spesifikasi}
-                              </h4>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 mt-3">
-                              <div className="flex items-center">
-                                <span className="text-sm text-gray-600 mr-2">
-                                  📊
-                                </span>
-                                <div>
-                                  <p className="text-xs text-gray-500">
-                                    Jumlah Unit
-                                  </p>
-                                  <p
-                                    className="font-semibold text-gray-800"
-                                    style={{
-                                      fontFamily: "Montserrat, sans-serif",
-                                    }}
-                                  >
-                                    {machine.jumlah} Unit
-                                  </p>
-                                </div>
+                {selectedIkm.machines && selectedIkm.machines.length > 0 && (
+                  <div>
+                    <h3
+                      className="text-xl font-bold text-gray-800 mb-4"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Mesin & Peralatan Produksi
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedIkm.machines.map((machine, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center mb-2">
+                                <span className="text-2xl mr-3">⚙️</span>
+                                <h4
+                                  className="font-bold text-gray-800"
+                                  style={{
+                                    fontFamily: "Montserrat, sans-serif",
+                                  }}
+                                >
+                                  {machine.spesifikasi}
+                                </h4>
                               </div>
-                              <div className="flex items-center">
-                                <span className="text-sm text-gray-600 mr-2">
-                                  ⚡
-                                </span>
-                                <div>
-                                  <p className="text-xs text-gray-500">
-                                    Kapasitas
-                                  </p>
-                                  <p
-                                    className="font-semibold text-blue-600"
-                                    style={{
-                                      fontFamily: "Montserrat, sans-serif",
-                                    }}
-                                  >
-                                    {machine.kapasitas}
-                                  </p>
+                              <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div className="flex items-center">
+                                  <span className="text-sm text-gray-600 mr-2">
+                                    📊
+                                  </span>
+                                  <div>
+                                    <p className="text-xs text-gray-500">
+                                      Jumlah Unit
+                                    </p>
+                                    <p
+                                      className="font-semibold text-gray-800"
+                                      style={{
+                                        fontFamily: "Montserrat, sans-serif",
+                                      }}
+                                    >
+                                      {machine.jumlah} Unit
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-sm text-gray-600 mr-2">
+                                    ⚡
+                                  </span>
+                                  <div>
+                                    <p className="text-xs text-gray-500">
+                                      Kapasitas
+                                    </p>
+                                    <p
+                                      className="font-semibold text-blue-600"
+                                      style={{
+                                        fontFamily: "Montserrat, sans-serif",
+                                      }}
+                                    >
+                                      {machine.kapasitas}
+                                    </p>
+                                  </div>
                                 </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 {/* Certifications */}
                 <div>
                   <h3

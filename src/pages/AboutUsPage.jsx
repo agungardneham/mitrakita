@@ -181,11 +181,10 @@ const AboutUsPage = () => {
     {
       icon: (
         <svg
-          className="w-10 h-10"
+          className="w-10 h-auto"
           fill="#0288D1"
           viewBox="-3 0 19 19"
           xmlns="http://www.w3.org/2000/svg"
-          class="cf-icon-svg"
         >
           <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
           <g
@@ -287,22 +286,10 @@ const AboutUsPage = () => {
         "Akses lengkap ke profil IKM yang telah melalui proses verifikasi admin dengan informasi produk, layanan, dan kapasitas produksi yang tervalidasi",
     },
     {
-      icon: <MessageSquare className="w-8 h-8" />,
-      title: "Sistem Chat Terintegrasi",
-      description:
-        "Platform komunikasi real-time yang memungkinkan diskusi langsung antara IKM dengan mitra potensial atau akademisi untuk kolaborasi riset",
-    },
-    {
       icon: <FileText className="w-8 h-8" />,
       title: "Repository Penelitian",
       description:
         "Kumpulan hasil penelitian akademis dengan fitur AI summarization yang memudahkan IKM menemukan inovasi dan teknologi terbaru",
-    },
-    {
-      icon: <TrendingUp className="w-8 h-8" />,
-      title: "Partnership Tracking",
-      description:
-        "Sistem monitoring progress kemitraan dari tahap order hingga pengiriman dengan update status real-time dan transparansi penuh",
     },
     {
       icon: <Star className="w-8 h-8" />,

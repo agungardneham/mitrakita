@@ -28,7 +28,7 @@ const dummyIKMData = [
     name: "CV Furniture Jaya Abadi",
     logo: "🪑",
     location: "Jepara, Jawa Tengah",
-    category: "Furniture & Kerajinan",
+    kbli: "16211",
     rating: 4.8,
     reviewCount: 124,
     products: [
@@ -71,7 +71,7 @@ const dummyIKMData = [
     name: "UD Tekstil Nusantara",
     logo: "🧵",
     location: "Bandung, Jawa Barat",
-    category: "Tekstil & Garmen",
+    kbli: "13910",
     rating: 4.6,
     reviewCount: 89,
     products: [
@@ -114,7 +114,7 @@ const dummyIKMData = [
     name: "PT Logam Presisi Indo",
     logo: "⚙️",
     location: "Surabaya, Jawa Timur",
-    category: "Logam & Metalurgi",
+    kbli: "25110",
     rating: 4.9,
     reviewCount: 156,
     products: [
@@ -157,7 +157,7 @@ const dummyIKMData = [
     name: "CV Makanan Berkah",
     logo: "🍲",
     location: "Jakarta Timur, DKI Jakarta",
-    category: "Makanan & Minuman",
+    kbli: "10711",
     rating: 4.7,
     reviewCount: 203,
     products: [
@@ -196,7 +196,7 @@ const dummyIKMData = [
     name: "UD Kemasan Kreatif",
     logo: "📦",
     location: "Tangerang, Banten",
-    category: "Kemasan & Packaging",
+    kbli: "17011",
     rating: 4.5,
     reviewCount: 78,
     products: [
@@ -235,7 +235,7 @@ const dummyIKMData = [
     name: "CV Kimia Sejahtera",
     logo: "🧪",
     location: "Semarang, Jawa Tengah",
-    category: "Kimia & Farmasi",
+    kbli: "20130",
     rating: 4.8,
     reviewCount: 92,
     products: [
@@ -274,7 +274,7 @@ const dummyIKMData = [
     name: "UD Kerajinan Rotan Asli",
     logo: "🧺",
     location: "Cirebon, Jawa Barat",
-    category: "Furniture & Kerajinan",
+    kbli: "16212",
     rating: 4.6,
     reviewCount: 67,
     products: [
@@ -317,7 +317,7 @@ const dummyIKMData = [
     name: "PT Elektronik Mandiri",
     logo: "🔌",
     location: "Bekasi, Jawa Barat",
-    category: "Elektronik & Komponen",
+    kbli: "26101",
     rating: 4.7,
     reviewCount: 134,
     products: [
@@ -359,7 +359,7 @@ const dummyIKMData = [
 
 const IKMDirectoryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedKbli, setSelectedKbli] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState("");
   const [selectedCertification, setSelectedCertification] = useState("");
@@ -371,15 +371,15 @@ const IKMDirectoryPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  const categories = [
-    "Semua",
-    "Furniture & Kerajinan",
-    "Tekstil & Garmen",
-    "Logam & Metalurgi",
-    "Makanan & Minuman",
-    "Kemasan & Packaging",
-    "Kimia & Farmasi",
-    "Elektronik & Komponen",
+  const kbliOptions = [
+    { label: "Semua", value: "" },
+    { label: "Furniture & Kerajinan", value: "16211" },
+    { label: "Tekstil & Garmen", value: "13910" },
+    { label: "Logam & Metalurgi", value: "25110" },
+    { label: "Makanan & Minuman", value: "10711" },
+    { label: "Kemasan & Packaging", value: "17011" },
+    { label: "Kimia & Farmasi", value: "20130" },
+    { label: "Elektronik & Komponen", value: "26101" },
   ];
   const locations = [
     "Semua",
@@ -414,8 +414,8 @@ const IKMDirectoryPage = () => {
       );
     }
 
-    if (selectedCategory && selectedCategory !== "Semua") {
-      filtered = filtered.filter((ikm) => ikm.category === selectedCategory);
+    if (selectedKbli) {
+      filtered = filtered.filter((ikm) => ikm.kbli === selectedKbli);
     }
 
     if (selectedLocation && selectedLocation !== "Semua") {
@@ -446,7 +446,7 @@ const IKMDirectoryPage = () => {
 
   const resetFilters = () => {
     setSearchQuery("");
-    setSelectedCategory("");
+    setSelectedKbli("");
     setSelectedLocation("");
     setSelectedServiceType("");
     setSelectedCertification("");
@@ -470,8 +470,7 @@ const IKMDirectoryPage = () => {
               ikm.products.some((p) =>
                 p.toLowerCase().includes(searchQuery.toLowerCase())
               ));
-        if (selectedCategory && selectedCategory !== "Semua")
-          matches = matches && ikm.category === selectedCategory;
+        if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
         if (selectedLocation && selectedLocation !== "Semua")
           matches = matches && ikm.location.includes(selectedLocation);
         if (selectedServiceType && selectedServiceType !== "Semua")
@@ -564,22 +563,21 @@ const IKMDirectoryPage = () => {
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Kategori Industri
+                    KBLI
                   </label>
                   <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    value={selectedKbli}
+                    onChange={(e) => setSelectedKbli(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat === "Semua" ? "" : cat}>
-                        {cat}
+                    {kbliOptions.map((opt) => (
+                      <option key={opt.value || "semua"} value={opt.value}>
+                        {opt.label} {opt.value ? `(${opt.value})` : ""}
                       </option>
                     ))}
                   </select>
                 </div>
-
                 {/* Location Filter */}
                 <div>
                   <label
@@ -768,7 +766,7 @@ const IKMDirectoryPage = () => {
                         className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold"
                         style={{ fontFamily: "Montserrat, sans-serif" }}
                       >
-                        {ikm.category}
+                        KBLI {ikm.kbli}
                       </span>
                     </div>
 
@@ -1158,13 +1156,13 @@ const IKMDirectoryPage = () => {
                       className="text-lg font-bold text-gray-800 mb-3"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      Bidang Usaha
+                      KBLI
                     </h3>
                     <span
                       className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-xl font-semibold"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      {selectedIkm.category}
+                      {selectedIkm.kbli}
                     </span>
                   </div>
                   <div>

@@ -6,6 +6,8 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import IKMDirectoryPage from "./pages/IKMDirectoryPage";
 import ResearchPage from "./pages/ResearchPage";
+import IKMDashboard from "./pages/IKMDashboard";
+import AcademicianDashboard from "./pages/AcademicianDashboard";
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/direktori" element={<IKMDirectoryPage />} />
         <Route path="/penelitian" element={<ResearchPage />} />
+        <Route path="/dashboard/ikm" element={<IKMDashboard />} />
+        <Route path="/dashboard/akademisi" element={<AcademicianDashboard />} />
       </Routes>
     </Router>
   );

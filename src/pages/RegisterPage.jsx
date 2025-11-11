@@ -22,16 +22,22 @@ import {
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Link, useNavigate } from "react-router-dom";
+import { auth } from "../firebase-config";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 const RegisterPage = () => {
   const [selectedRole, setSelectedRole] = useState("");
   const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     // Common fields
     email: "",
     password: "",
     confirmPassword: "",
     phone: "",
+    createdAt: new Date(),
 
     // IKM specific
     businessName: "",
@@ -99,23 +105,70 @@ const RegisterPage = () => {
 
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setIsLoading(true);
+
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
-      alert("Password tidak cocok!");
+      setError("Password tidak cocok!");
+      setIsLoading(false);
       return;
     }
+
     // Validate phone required for ikm and academician
     if (selectedRole !== "user" && !formData.phone) {
-      alert("Nomor telepon wajib diisi untuk peran IKM dan Akademisi.");
+      setError("Nomor telepon wajib diisi untuk peran IKM dan Akademisi.");
+      setIsLoading(false);
       return;
     }
-    // In real app: send to backend API
-    alert(
-      `Pendaftaran berhasil sebagai ${selectedRole}! Silakan cek email untuk verifikasi.`
-    );
-    navigate("/login");
+
+    try {
+      // Create auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      const user = userCredential.user;
+      const displayName =
+        formData.fullName || formData.businessName || formData.institution;
+
+      // Update user profile
+      await updateProfile(user, {
+        displayName: displayName,
+      });
+
+      // Remove sensitive data before storing
+      const userData = { ...formData };
+      delete userData.password;
+      delete userData.confirmPassword;
+
+      // Add additional user metadata
+      userData.uid = user.uid;
+      userData.role = selectedRole;
+      userData.createdAt = new Date();
+
+      // Store user data in Firestore
+      const db = getFirestore();
+      await setDoc(doc(db, "users", user.uid), userData);
+
+      // Success, redirect to login
+      alert(
+        "Pendaftaran berhasil! Silakan login dengan akun yang telah dibuat."
+      );
+      navigate("/login");
+    } catch (error) {
+      setError(
+        error.code === "auth/email-already-in-use"
+          ? "Email sudah terdaftar. Silakan gunakan email lain."
+          : "Terjadi kesalahan saat pendaftaran. Silakan coba lagi."
+      );
+      setIsLoading(false);
+      return;
+    }
   };
 
   return (
@@ -242,6 +295,16 @@ const RegisterPage = () => {
               </div>
 
               <div className="mt-8 text-center">
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-xl text-sm">
+                    {error}
+                  </div>
+                )}
+                {isLoading && (
+                  <div className="mb-4 p-4 bg-blue-50 text-blue-700 rounded-xl text-sm">
+                    Sedang memproses pendaftaran...
+                  </div>
+                )}
                 <p
                   className="text-gray-600"
                   style={{ fontFamily: "Open Sans, sans-serif" }}
@@ -413,27 +476,30 @@ const RegisterPage = () => {
                           className="block text-gray-700 font-semibold mb-2"
                           style={{ fontFamily: "Montserrat, sans-serif" }}
                         >
-                          Jenis Usaha <span className="text-red-500">*</span>
+                          KBLI <span className="text-red-500">*</span>
                         </label>
-                        <select
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="^\d{5}$"
+                          maxLength={5}
                           value={formData.businessType}
-                          onChange={(e) =>
-                            handleInputChange("businessType", e.target.value)
-                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Hanya izinkan angka dan batasi sampai 5 digit
+                            if (/^\d{0,5}$/.test(value)) {
+                              handleInputChange("businessType", value);
+                            }
+                          }}
+                          placeholder="Masukkan kode KBLI (5 digit angka)"
                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                           required
-                        >
-                          <option value="">Pilih jenis usaha</option>
-                          <option value="furniture">
-                            Furniture & Kerajinan
-                          </option>
-                          <option value="textile">Tekstil & Garmen</option>
-                          <option value="food">Makanan & Minuman</option>
-                          <option value="metal">Logam & Metalurgi</option>
-                          <option value="packaging">Kemasan & Packaging</option>
-                          <option value="other">Lainnya</option>
-                        </select>
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Isian KBLI harus berupa angka lima digit. Contoh:
+                          24103
+                        </p>
                       </div>
                     </div>
                     <div>
@@ -775,10 +841,15 @@ const RegisterPage = () => {
                 )}
                 <button
                   type="submit"
-                  className="w-full bg-green-600 text-white px-6 py-3 rounded-2xl hover:shadow-lg transition-all font-bold text-lg"
+                  disabled={isLoading}
+                  className={`w-full px-6 py-3 rounded-2xl transition-all font-bold text-lg ${
+                    isLoading
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-green-600 text-white hover:shadow-lg"
+                  }`}
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
-                  Daftar Sekarang
+                  {isLoading ? "Mendaftarkan..." : "Daftar Sekarang"}
                 </button>
               </form>
             </div>

@@ -22,8 +22,10 @@ import {
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { supabase } from "../supabaseClient";
 
 // ============================================
 // ACADEMICIAN DASHBOARD COMPONENT
@@ -32,8 +34,11 @@ const AcademicianDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [showResearchModal, setShowResearchModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
-  const [researchStatus, setResearchStatus] = useState("completed");
-  const { logout } = useAuth();
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
   // Profile Data State
@@ -68,6 +73,61 @@ const AcademicianDashboard = () => {
       },
     ],
   });
+
+  // Load profile from Firestore when user is available
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+      try {
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          // Normalize photo field: prefer photoUrl from Firestore
+          const merged = { ...data };
+          // Prefer photoUrl (supabase upload) over legacy `photo` field so uploaded images are shown
+          if (data.photoUrl) {
+            merged.photo = data.photoUrl;
+          } else if (data.photo) {
+            merged.photo = data.photo;
+          }
+          // Merge fetched data into local state, keep defaults for missing fields
+          setProfileData((prev) => ({ ...prev, ...merged }));
+          // If researches exist in Firestore, load them into state
+          if (Array.isArray(data.researches)) {
+            setResearches(data.researches);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading academician profile:", err);
+      }
+    };
+
+    loadProfile();
+  }, [user]);
+
+  // Save profile data to Firestore
+  const saveProfileToFirestore = async () => {
+    if (!user) {
+      alert("User tidak ditemukan. Silakan login kembali.");
+      return;
+    }
+    try {
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      // Save/merge profileData into user document
+      await setDoc(
+        userDocRef,
+        { ...profileData, role: "academician", uid: user.uid },
+        { merge: true }
+      );
+      alert("Profil berhasil diperbaharui.");
+    } catch (err) {
+      console.error("Error saving academician profile:", err);
+      alert("Terjadi kesalahan saat menyimpan profil. Silakan coba lagi.");
+    }
+  };
 
   // Research Data State
   const [researches, setResearches] = useState([
@@ -163,12 +223,176 @@ const AcademicianDashboard = () => {
     setProfileData({ ...profileData, [field]: value });
   };
 
-  const handleAddResearch = (newResearch) => {
-    setResearches([
-      ...researches,
-      { ...newResearch, id: researches.length + 1, verified: false },
-    ]);
+  // Research modal & form state for add/edit
+  const [editingResearchId, setEditingResearchId] = useState(null);
+  const [researchForm, setResearchForm] = useState({
+    title: "",
+    status: "completed",
+    field: "",
+    year: new Date().getFullYear(),
+    abstract: "",
+    keywords: "",
+    futureplan: "",
+    collaboration: "",
+    pdfUrl: null,
+  });
+  const [researchPdfFile, setResearchPdfFile] = useState(null);
+  const [uploadingResearchFile, setUploadingResearchFile] = useState(false);
+
+  // persist researches array to Firestore
+  const saveResearchesToFirestore = async (updatedResearches) => {
+    if (!user) return;
+    try {
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      await setDoc(
+        userDocRef,
+        { researches: updatedResearches },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Error saving researches:", err);
+    }
+  };
+
+  const openNewResearchModal = () => {
+    setEditingResearchId(null);
+    setResearchForm({
+      title: "",
+      status: "completed",
+      field: "",
+      year: new Date().getFullYear(),
+      abstract: "",
+      keywords: "",
+      futureplan: "",
+      collaboration: "",
+      pdfUrl: null,
+    });
+    setResearchPdfFile(null);
+    setShowResearchModal(true);
+  };
+
+  const openEditResearchModal = (research) => {
+    setEditingResearchId(research.id);
+    setResearchForm({
+      title: research.title || "",
+      status: research.status || "completed",
+      field: research.field || "",
+      year: research.year || new Date().getFullYear(),
+      abstract: research.abstract || "",
+      keywords: (research.keywords || []).join(", "),
+      futureplan: research.futureplan || "",
+      collaboration: research.collaboration || "",
+      pdfUrl: research.pdfUrl || research.pdf || null,
+    });
+    setResearchPdfFile(null);
+    setShowResearchModal(true);
+  };
+
+  const handleDeleteResearch = async (id) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus penelitian ini?"))
+      return;
+    const updated = researches.filter((r) => r.id !== id);
+    setResearches(updated);
+    await saveResearchesToFirestore(updated);
+  };
+
+  const submitResearchForm = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!user) {
+      alert("Silakan login terlebih dahulu.");
+      return;
+    }
+
+    const timestamp = Date.now();
+    let pdfUrl = researchForm.pdfUrl || null;
+
+    if (researchPdfFile) {
+      setUploadingResearchFile(true);
+      try {
+        const fileName = `abstracts/${user.uid}_${timestamp}_${researchPdfFile.name}`;
+        const { error } = await supabase.storage
+          .from("academician-research-abstracts")
+          .upload(fileName, researchPdfFile);
+        if (error) {
+          console.error("Upload error:", error);
+          alert("Gagal mengupload file PDF. Coba lagi.");
+          setUploadingResearchFile(false);
+          return;
+        }
+        const { data: publicUrlData } = supabase.storage
+          .from("academician-research-abstracts")
+          .getPublicUrl(fileName);
+        pdfUrl = publicUrlData?.publicUrl;
+      } catch (err) {
+        console.error("Error uploading research PDF:", err);
+        alert("Terjadi kesalahan saat mengupload PDF");
+        setUploadingResearchFile(false);
+        return;
+      } finally {
+        setUploadingResearchFile(false);
+      }
+    }
+
+    const keywordsArr = researchForm.keywords
+      ? researchForm.keywords.split(",").map((k) => k.trim())
+      : [];
+
+    if (editingResearchId) {
+      const updated = researches.map((r) =>
+        r.id === editingResearchId
+          ? {
+              ...r,
+              title: researchForm.title,
+              status: researchForm.status,
+              field: researchForm.field,
+              year: parseInt(researchForm.year),
+              abstract: researchForm.abstract,
+              keywords: keywordsArr,
+              futureplan: researchForm.futureplan,
+              collaboration: researchForm.collaboration,
+              pdfUrl: pdfUrl || r.pdfUrl || r.pdf,
+            }
+          : r
+      );
+      setResearches(updated);
+      await saveResearchesToFirestore(updated);
+    } else {
+      const newResearch = {
+        id:
+          researches.length > 0
+            ? Math.max(...researches.map((r) => r.id)) + 1
+            : 1,
+        title: researchForm.title,
+        status: researchForm.status,
+        field: researchForm.field,
+        year: parseInt(researchForm.year),
+        abstract: researchForm.abstract,
+        keywords: keywordsArr,
+        futureplan: researchForm.futureplan,
+        collaboration: researchForm.collaboration,
+        pdfUrl: pdfUrl,
+        verified: false,
+      };
+      const updated = [newResearch, ...researches];
+      setResearches(updated);
+      await saveResearchesToFirestore(updated);
+    }
+
     setShowResearchModal(false);
+    setEditingResearchId(null);
+    setResearchPdfFile(null);
+    setResearchForm({
+      title: "",
+      status: "completed",
+      field: "",
+      year: new Date().getFullYear(),
+      abstract: "",
+      keywords: "",
+      futureplan: "",
+      collaboration: "",
+      pdfUrl: null,
+    });
   };
 
   const handleVerifyPartnership = (id, action) => {
@@ -198,9 +422,11 @@ const AcademicianDashboard = () => {
         <div className="w-64 bg-white shadow-lg hidden md:block">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-2xl">
-                {profileData.photo}
-              </div>
+              <img
+                src={profileData.photo}
+                alt="Profil"
+                className="w-12 h-12 object-cover rounded-xl"
+              />
               <div>
                 <h2
                   className="text-lg font-bold text-gray-800"
@@ -214,7 +440,8 @@ const AcademicianDashboard = () => {
               className="text-sm text-gray-600"
               style={{ fontFamily: "Open Sans, sans-serif" }}
             >
-              {profileData.prefixTitle} {profileData.fullName}
+              {profileData.frontDegree} {profileData.academicianName}{" "}
+              {profileData.backDegree}
             </p>
           </div>
           <nav className="px-4">
@@ -256,8 +483,8 @@ const AcademicianDashboard = () => {
                 className="text-3xl font-bold text-gray-800 mb-8"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
-                Selamat Datang, {profileData.prefixTitle} {profileData.fullName}
-                ! 👋
+                Selamat Datang, {profileData.frontDegree}{" "}
+                {profileData.academicianName} {profileData.backDegree}! 👋
               </h1>
 
               {/* Stats Cards */}
@@ -478,16 +705,133 @@ const AcademicianDashboard = () => {
                       </label>
                       {editingProfile ? (
                         <div className="flex items-center space-x-4">
-                          <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-5xl">
-                            {profileData.photo}
+                          <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-5xl overflow-hidden">
+                            {profileData.photo &&
+                            typeof profileData.photo === "string" &&
+                            profileData.photo.startsWith("http") ? (
+                              <img
+                                src={profileData.photo}
+                                alt="Profil"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="text-5xl">
+                                {profileData.photo}
+                              </div>
+                            )}
                           </div>
-                          <button className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
-                            Unggah Foto
-                          </button>
+
+                          <div className="flex flex-col space-y-2">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setPhotoFile(file);
+                                  const reader = new FileReader();
+                                  reader.onloadend = () =>
+                                    setPhotoPreview(reader.result);
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                            {photoPreview && (
+                              <div className="w-24 h-24 rounded-xl overflow-hidden">
+                                <img
+                                  src={photoPreview}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={async () => {
+                                  if (!photoFile || !user) {
+                                    alert(
+                                      "Pilih file terlebih dahulu atau login."
+                                    );
+                                    return;
+                                  }
+                                  setUploadingPhoto(true);
+                                  try {
+                                    const timestamp = Date.now();
+                                    const fileName = `${user.uid}_${timestamp}_${photoFile.name}`;
+                                    const { error } = await supabase.storage
+                                      .from("academician-profile-photos")
+                                      .upload(fileName, photoFile);
+                                    if (error) {
+                                      console.error("Upload error:", error);
+                                      alert(
+                                        "Gagal mengupload foto. Coba lagi."
+                                      );
+                                      return;
+                                    }
+
+                                    const { data: publicUrlData } =
+                                      supabase.storage
+                                        .from("academician-profile-photos")
+                                        .getPublicUrl(fileName);
+
+                                    const publicUrl = publicUrlData?.publicUrl;
+
+                                    // Save to Firestore
+                                    const db = getFirestore();
+                                    const userDocRef = doc(
+                                      db,
+                                      "users",
+                                      user.uid
+                                    );
+                                    await setDoc(
+                                      userDocRef,
+                                      { photoUrl: publicUrl },
+                                      { merge: true }
+                                    );
+
+                                    // Update local state
+                                    setProfileData((prev) => ({
+                                      ...prev,
+                                      photo: publicUrl,
+                                    }));
+                                    setPhotoFile(null);
+                                    setPhotoPreview(null);
+                                    alert("Foto profil berhasil diupload");
+                                  } catch (err) {
+                                    console.error(
+                                      "Error uploading academician photo:",
+                                      err
+                                    );
+                                    alert(
+                                      "Terjadi kesalahan saat mengupload foto"
+                                    );
+                                  } finally {
+                                    setUploadingPhoto(false);
+                                  }
+                                }}
+                                disabled={uploadingPhoto || !photoFile}
+                                className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                              >
+                                {uploadingPhoto
+                                  ? "Mengunggah..."
+                                  : "Unggah Foto"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ) : (
-                        <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-5xl">
-                          {profileData.photo}
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-5xl overflow-hidden">
+                          {profileData.photo &&
+                          typeof profileData.photo === "string" &&
+                          profileData.photo.startsWith("http") ? (
+                            <img
+                              src={profileData.photo}
+                              alt="Profil"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="text-5xl">{profileData.photo}</div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -502,9 +846,9 @@ const AcademicianDashboard = () => {
                           </label>
                           <input
                             type="text"
-                            value={profileData.prefixTitle}
+                            value={profileData.frontDegree}
                             onChange={(e) =>
-                              handleProfileUpdate("prefixTitle", e.target.value)
+                              handleProfileUpdate("frontDegree", e.target.value)
                             }
                             disabled={!editingProfile}
                             placeholder="Dr."
@@ -525,9 +869,12 @@ const AcademicianDashboard = () => {
                           </label>
                           <input
                             type="text"
-                            value={profileData.fullName}
+                            value={profileData.academicianName}
                             onChange={(e) =>
-                              handleProfileUpdate("fullName", e.target.value)
+                              handleProfileUpdate(
+                                "academicianName",
+                                e.target.value
+                              )
                             }
                             disabled={!editingProfile}
                             className={`w-full px-4 py-3 rounded-xl border-2 ${
@@ -548,9 +895,9 @@ const AcademicianDashboard = () => {
                         </label>
                         <input
                           type="text"
-                          value={profileData.suffixTitle}
+                          value={profileData.backDegree}
                           onChange={(e) =>
-                            handleProfileUpdate("suffixTitle", e.target.value)
+                            handleProfileUpdate("backDegree", e.target.value)
                           }
                           disabled={!editingProfile}
                           placeholder="M.T., Ph.D."
@@ -804,9 +1151,9 @@ const AcademicianDashboard = () => {
                       Batal
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        await saveProfileToFirestore();
                         setEditingProfile(false);
-                        alert("Profil berhasil diperbarui!");
                       }}
                       className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -830,7 +1177,7 @@ const AcademicianDashboard = () => {
                   Penelitian Saya
                 </h1>
                 <button
-                  onClick={() => setShowResearchModal(true)}
+                  onClick={openNewResearchModal}
                   className="bg-green-600 text-white px-6 py-3 rounded-2xl font-semibold hover:shadow-lg transition-all flex items-center space-x-2"
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
@@ -839,100 +1186,126 @@ const AcademicianDashboard = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {researches.map((research) => (
-                  <div
-                    key={research.id}
-                    className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition"
+              {researches.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p
+                    className="text-gray-600"
+                    style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    <div className="flex justify-between items-start mb-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          research.status === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {research.status === "completed"
-                          ? "Selesai"
-                          : "Berlangsung"}
-                      </span>
-                      {research.verified && (
-                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Terverifikasi
-                        </span>
-                      )}
-                    </div>
-
-                    <h3
-                      className="text-lg font-bold text-gray-800 mb-2"
-                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    Belum ada Penelitian. Klik{" "}
+                    <span className="font-semibold">"Upload Penelitian"</span>{" "}
+                    untuk menambah.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {researches.map((research) => (
+                    <div
+                      key={research.id}
+                      className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-2xl transition"
                     >
-                      {research.title}
-                    </h3>
-
-                    <div className="text-sm text-gray-600 mb-3 space-y-1">
-                      <p>
-                        <strong>Bidang:</strong> {research.field}
-                      </p>
-                      <p>
-                        <strong>Tahun:</strong> {research.year}
-                      </p>
-                    </div>
-
-                    <p
-                      className="text-sm text-gray-600 mb-3 line-clamp-2"
-                      style={{ fontFamily: "Open Sans, sans-serif" }}
-                    >
-                      {research.abstract}
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {research.keywords.map((keyword, idx) => (
+                      <div className="flex justify-between items-start mb-4">
                         <span
-                          key={idx}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-lg"
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            research.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
                         >
-                          {keyword}
+                          {research.status === "completed"
+                            ? "Selesai"
+                            : "Berlangsung"}
                         </span>
-                      ))}
-                    </div>
+                        {research.verified && (
+                          <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Terverifikasi
+                          </span>
+                        )}
+                      </div>
 
-                    {research.status === "completed" && research.futureplan && (
-                      <div className="bg-blue-50 rounded-xl p-3 mb-3">
-                        <p className="text-xs font-semibold text-blue-700 mb-1">
-                          Rencana ke Depan:
+                      <h3
+                        className="text-lg font-bold text-gray-800 mb-2"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
+                      >
+                        {research.title}
+                      </h3>
+
+                      <div className="text-sm text-gray-600 mb-3 space-y-1">
+                        <p>
+                          <strong>Bidang:</strong> {research.field}
                         </p>
-                        <p className="text-xs text-blue-600">
-                          {research.futureplan}
+                        <p>
+                          <strong>Tahun:</strong> {research.year}
                         </p>
                       </div>
-                    )}
 
-                    {research.status === "ongoing" &&
-                      research.collaboration && (
-                        <div className="bg-yellow-50 rounded-xl p-3 mb-3">
-                          <p className="text-xs font-semibold text-yellow-700 mb-1">
-                            Kolaborasi Diharapkan:
-                          </p>
-                          <p className="text-xs text-yellow-600">
-                            {research.collaboration}
-                          </p>
-                        </div>
-                      )}
+                      <p
+                        className="text-sm text-gray-600 mb-3 line-clamp-2"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        {research.abstract}
+                      </p>
 
-                    <div className="flex space-x-2">
-                      <button className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
-                        Edit
-                      </button>
-                      <button className="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">
-                        Lihat Detail
-                      </button>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {research.keywords.map((keyword, idx) => (
+                          <span
+                            key={idx}
+                            className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-lg"
+                          >
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+
+                      {research.status === "completed" &&
+                        research.futureplan && (
+                          <div className="bg-blue-50 rounded-xl p-3 mb-3">
+                            <p className="text-xs font-semibold text-blue-700 mb-1">
+                              Rencana ke Depan:
+                            </p>
+                            <p className="text-xs text-blue-600">
+                              {research.futureplan}
+                            </p>
+                          </div>
+                        )}
+
+                      {research.status === "ongoing" &&
+                        research.collaboration && (
+                          <div className="bg-yellow-50 rounded-xl p-3 mb-3">
+                            <p className="text-xs font-semibold text-yellow-700 mb-1">
+                              Kolaborasi Diharapkan:
+                            </p>
+                            <p className="text-xs text-yellow-600">
+                              {research.collaboration}
+                            </p>
+                          </div>
+                        )}
+
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => openEditResearchModal(research)}
+                          className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteResearch(research.id)}
+                          className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition"
+                        >
+                          Hapus
+                        </button>
+                        <button className="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">
+                          Lihat Detail
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1178,32 +1551,7 @@ const AcademicianDashboard = () => {
                 </div>
               </div>
 
-              <form
-                className="p-6 space-y-6"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target);
-                  handleAddResearch({
-                    title: formData.get("title"),
-                    status: researchStatus,
-                    field: formData.get("field"),
-                    year: parseInt(formData.get("year")),
-                    abstract: formData.get("abstract"),
-                    keywords: formData
-                      .get("keywords")
-                      .split(",")
-                      .map((k) => k.trim()),
-                    futureplan:
-                      researchStatus === "completed"
-                        ? formData.get("futureplan")
-                        : "",
-                    collaboration:
-                      researchStatus === "ongoing"
-                        ? formData.get("collaboration")
-                        : "",
-                  });
-                }}
-              >
+              <form className="p-6 space-y-6" onSubmit={submitResearchForm}>
                 {/* Title */}
                 <div>
                   <label
@@ -1215,6 +1563,13 @@ const AcademicianDashboard = () => {
                   <input
                     type="text"
                     name="title"
+                    value={researchForm.title}
+                    onChange={(e) =>
+                      setResearchForm({
+                        ...researchForm,
+                        title: e.target.value,
+                      })
+                    }
                     placeholder="Masukkan judul penelitian lengkap"
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
@@ -1233,9 +1588,14 @@ const AcademicianDashboard = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
-                      onClick={() => setResearchStatus("completed")}
+                      onClick={() =>
+                        setResearchForm({
+                          ...researchForm,
+                          status: "completed",
+                        })
+                      }
                       className={`p-4 rounded-xl border-2 transition ${
-                        researchStatus === "completed"
+                        researchForm.status === "completed"
                           ? "border-green-500 bg-green-50"
                           : "border-gray-300 hover:border-green-300"
                       }`}
@@ -1243,7 +1603,7 @@ const AcademicianDashboard = () => {
                       <div className="flex items-center justify-center mb-2">
                         <CheckCircle
                           className={`w-8 h-8 ${
-                            researchStatus === "completed"
+                            researchForm.status === "completed"
                               ? "text-green-600"
                               : "text-gray-400"
                           }`}
@@ -1258,9 +1618,11 @@ const AcademicianDashboard = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setResearchStatus("ongoing")}
+                      onClick={() =>
+                        setResearchForm({ ...researchForm, status: "ongoing" })
+                      }
                       className={`p-4 rounded-xl border-2 transition ${
-                        researchStatus === "ongoing"
+                        researchForm.status === "ongoing"
                           ? "border-yellow-500 bg-yellow-50"
                           : "border-gray-300 hover:border-yellow-300"
                       }`}
@@ -1268,7 +1630,7 @@ const AcademicianDashboard = () => {
                       <div className="flex items-center justify-center mb-2">
                         <TrendingUp
                           className={`w-8 h-8 ${
-                            researchStatus === "ongoing"
+                            researchForm.status === "ongoing"
                               ? "text-yellow-600"
                               : "text-gray-400"
                           }`}
@@ -1285,7 +1647,7 @@ const AcademicianDashboard = () => {
                 </div>
 
                 {/* Conditional Field based on Status */}
-                {researchStatus === "completed" && (
+                {researchForm.status === "completed" && (
                   <div className="bg-green-50 rounded-xl p-4">
                     <label
                       className="block text-sm font-semibold text-green-700 mb-2"
@@ -1295,6 +1657,13 @@ const AcademicianDashboard = () => {
                     </label>
                     <textarea
                       name="futureplan"
+                      value={researchForm.futureplan}
+                      onChange={(e) =>
+                        setResearchForm({
+                          ...researchForm,
+                          futureplan: e.target.value,
+                        })
+                      }
                       rows={3}
                       placeholder="Jelaskan rencana implementasi atau pengembangan lebih lanjut..."
                       className="w-full px-4 py-3 rounded-xl border-2 border-green-200 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -1304,7 +1673,7 @@ const AcademicianDashboard = () => {
                   </div>
                 )}
 
-                {researchStatus === "ongoing" && (
+                {researchForm.status === "ongoing" && (
                   <div className="bg-yellow-50 rounded-xl p-4">
                     <label
                       className="block text-sm font-semibold text-yellow-700 mb-2"
@@ -1315,6 +1684,13 @@ const AcademicianDashboard = () => {
                     </label>
                     <textarea
                       name="collaboration"
+                      value={researchForm.collaboration}
+                      onChange={(e) =>
+                        setResearchForm({
+                          ...researchForm,
+                          collaboration: e.target.value,
+                        })
+                      }
                       rows={3}
                       placeholder="Jelaskan jenis IKM atau kolaborasi yang Anda butuhkan..."
                       className="w-full px-4 py-3 rounded-xl border-2 border-yellow-200 focus:outline-none focus:ring-2 focus:ring-yellow-500"
@@ -1331,33 +1707,23 @@ const AcademicianDashboard = () => {
                       className="block text-sm font-semibold text-gray-700 mb-2"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      Bidang Industri <span className="text-red-500">*</span>
+                      Bidang / Area Penelitian{" "}
+                      <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="text"
                       name="field"
+                      value={researchForm.field}
+                      onChange={(e) =>
+                        setResearchForm({
+                          ...researchForm,
+                          field: e.target.value,
+                        })
+                      }
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                       required
-                    >
-                      <option value="">Pilih bidang industri</option>
-                      <option value="Furniture & Kerajinan">
-                        Furniture & Kerajinan
-                      </option>
-                      <option value="Tekstil & Garmen">Tekstil & Garmen</option>
-                      <option value="Logam & Metalurgi">
-                        Logam & Metalurgi
-                      </option>
-                      <option value="Kemasan & Packaging">
-                        Kemasan & Packaging
-                      </option>
-                      <option value="Makanan & Minuman">
-                        Makanan & Minuman
-                      </option>
-                      <option value="Kimia & Farmasi">Kimia & Farmasi</option>
-                      <option value="Elektronik & Komponen">
-                        Elektronik & Komponen
-                      </option>
-                    </select>
+                    />
                   </div>
                   <div>
                     <label
@@ -1369,6 +1735,13 @@ const AcademicianDashboard = () => {
                     <input
                       type="number"
                       name="year"
+                      value={researchForm.year}
+                      onChange={(e) =>
+                        setResearchForm({
+                          ...researchForm,
+                          year: e.target.value,
+                        })
+                      }
                       min="2000"
                       max="2025"
                       placeholder="2024"
@@ -1389,6 +1762,13 @@ const AcademicianDashboard = () => {
                   </label>
                   <textarea
                     name="abstract"
+                    value={researchForm.abstract}
+                    onChange={(e) =>
+                      setResearchForm({
+                        ...researchForm,
+                        abstract: e.target.value,
+                      })
+                    }
                     rows={5}
                     placeholder="Jelaskan ringkasan penelitian Anda (maksimal 500 kata)"
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -1409,6 +1789,13 @@ const AcademicianDashboard = () => {
                   <input
                     type="text"
                     name="keywords"
+                    value={researchForm.keywords}
+                    onChange={(e) =>
+                      setResearchForm({
+                        ...researchForm,
+                        keywords: e.target.value,
+                      })
+                    }
                     placeholder="Pisahkan dengan koma (contoh: IoT, Monitoring, Kualitas, Logam)"
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
@@ -1425,16 +1812,29 @@ const AcademicianDashboard = () => {
                     Upload Dokumen Abstrak (.pdf){" "}
                     <span className="text-red-500">*</span>
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-green-500 transition cursor-pointer">
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-green-500 transition">
                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <p
                       className="text-gray-600 mb-2"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                     >
-                      Klik untuk upload atau drag & drop file
+                      Pilih file PDF abstrak (maks 10MB)
                     </p>
-                    <p className="text-xs text-gray-500">PDF (Maksimal 10MB)</p>
-                    <input type="file" accept=".pdf" className="hidden" />
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) =>
+                        setResearchPdfFile(e.target.files?.[0] || null)
+                      }
+                      className="mx-auto"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      {researchPdfFile
+                        ? researchPdfFile.name
+                        : researchForm.pdfUrl
+                        ? "File terunggah"
+                        : "Belum ada file"}
+                    </p>
                   </div>
                 </div>
 
@@ -1462,10 +1862,13 @@ const AcademicianDashboard = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                    disabled={uploadingResearchFile}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Kirim untuk Verifikasi
+                    {uploadingResearchFile
+                      ? "Mengunggah..."
+                      : "Kirim untuk Verifikasi"}
                   </button>
                 </div>
               </form>

@@ -20,13 +20,22 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 // ============================================
 // NAVBAR COMPONENT
 // ============================================
-const Navbar = ({ userRole, onNavigate }) => {
+const Navbar = ({ onNavigate }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isLoggedIn, role, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    setMobileMenuOpen(false);
+    navigate("/");
+  };
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -75,14 +84,32 @@ const Navbar = ({ userRole, onNavigate }) => {
             >
               Tentang Kami
             </Link>
-            {userRole ? (
-              <button
-                onClick={() => onNavigate("dashboard")}
-                className="bg-gradient-to-r from-green-600 to-green-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition-all font-semibold"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                Dashboard
-              </button>
+            {isLoggedIn ? (
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    if (role === "ikm") {
+                      navigate("/dashboard/ikm");
+                    } else if (role === "user") {
+                      navigate("/dashboard/user");
+                    } else if (role === "academician") {
+                      navigate("/dashboard/akademisi");
+                    }
+                  }}
+                  className="bg-gradient-to-r from-green-600 to-green-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition-all font-semibold"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 text-red-600 hover:text-red-700 transition font-semibold"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Keluar</span>
+                </button>
+              </div>
             ) : (
               <Link
                 to="/login"
@@ -140,16 +167,32 @@ const Navbar = ({ userRole, onNavigate }) => {
             >
               Tentang Kami
             </Link>
-            {userRole ? (
-              <button
-                onClick={() => {
-                  onNavigate("dashboard");
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition"
-              >
-                Dashboard
-              </button>
+            {isLoggedIn ? (
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    if (role === "ikm") {
+                      navigate("/dashboard/ikm");
+                    } else if (role === "user") {
+                      navigate("/dashboard/user");
+                    } else if (role === "academician") {
+                      navigate("/dashboard/akademisi");
+                    }
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition"
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 w-full px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition font-semibold"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Keluar</span>
+                </button>
+              </div>
             ) : (
               <Link
                 to="/login"

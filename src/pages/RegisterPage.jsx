@@ -41,7 +41,7 @@ const RegisterPage = () => {
 
     // IKM specific
     businessName: "",
-    businessType: "",
+    kbli: "",
     officeAddress: "",
     factoryAdress: "",
     sameAddress: false,
@@ -483,12 +483,12 @@ const RegisterPage = () => {
                           inputMode="numeric"
                           pattern="^\d{5}$"
                           maxLength={5}
-                          value={formData.businessType}
+                          value={formData.kbli}
                           onChange={(e) => {
                             const value = e.target.value;
                             // Hanya izinkan angka dan batasi sampai 5 digit
                             if (/^\d{0,5}$/.test(value)) {
-                              handleInputChange("businessType", value);
+                              handleInputChange("kbli", value);
                             }
                           }}
                           placeholder="Masukkan kode KBLI (5 digit angka)"

@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Building2, Users, GraduationCap, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { auth } from "../firebase-config";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
@@ -38,11 +41,88 @@ const LoginPage = ({ setUserRole }) => {
     },
   ];
 
-  const handleLogin = (e) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (selectedRole && email && password) {
-      if (setUserRole) setUserRole(selectedRole);
-      navigate("/dashboard");
+    setError("");
+    if (!selectedRole) {
+      setError("Pilih peran Anda terlebih dahulu.");
+      return;
+    }
+    if (!email || !password) {
+      setError("Isi email dan password.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const user = cred.user;
+
+      // Get user doc from Firestore to determine role
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userDocRef);
+      let roleFromDb = null;
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        roleFromDb = data.role;
+      }
+
+      // Validate that selected role matches Firestore role
+      if (roleFromDb && roleFromDb !== selectedRole) {
+        throw new Error(
+          `Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih.`
+        );
+      }
+
+      const roleToUse = roleFromDb || selectedRole;
+
+      // Optionally lift role to parent
+      if (setUserRole) setUserRole(roleToUse);
+
+      // Redirect based on role
+      if (roleToUse === "ikm") {
+        navigate("/dashboard/ikm");
+      } else if (roleToUse === "user") {
+        navigate("/dashboard/user");
+      } else if (roleToUse === "academician") {
+        navigate("/dashboard/akademisi");
+      } else {
+        // default fallback
+        navigate("/");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      // Handle different Firebase error codes
+      if (
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/user-not-found"
+      ) {
+        setError(
+          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih."
+        );
+      } else if (err.code === "auth/too-many-requests") {
+        setError(
+          "Terlalu banyak percobaan login gagal. Silakan coba beberapa saat lagi."
+        );
+      } else if (err.code === "auth/operation-not-allowed") {
+        setError(
+          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih."
+        );
+      } else if (err.message && !err.code) {
+        // Custom error messages (dari validasi role mismatch)
+        setError(err.message);
+      } else {
+        setError(
+          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih."
+        );
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -141,6 +221,11 @@ const LoginPage = ({ setUserRole }) => {
                   </p>
                 </div>
               )}
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleLogin} className="space-y-6">
                 {/* Email Input */}
@@ -228,15 +313,15 @@ const LoginPage = ({ setUserRole }) => {
                 {/* Login Button */}
                 <button
                   type="submit"
-                  disabled={!selectedRole}
+                  disabled={!selectedRole || isLoading}
                   className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
-                    selectedRole
-                      ? "bg-gradient-to-r from-green-600 to-green-500 text-white hover:shadow-xl hover:scale-105"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    !selectedRole || isLoading
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-gradient-to-r from-green-600 to-green-500 text-white hover:shadow-xl hover:scale-105"
                   }`}
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
-                  Masuk
+                  {isLoading ? "Masuk..." : "Masuk"}
                 </button>
 
                 {/* Divider */}

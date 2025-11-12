@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   Users,
@@ -23,6 +23,7 @@ import {
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 // ============================================
 // ACADEMICIAN DASHBOARD COMPONENT
@@ -32,6 +33,8 @@ const AcademicianDashboard = () => {
   const [showResearchModal, setShowResearchModal] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [researchStatus, setResearchStatus] = useState("completed");
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   // Profile Data State
   const [profileData, setProfileData] = useState({
@@ -230,7 +233,14 @@ const AcademicianDashboard = () => {
                 <span>{item.label}</span>
               </button>
             ))}
-            <button className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all mt-8">
+            <button
+              onClick={async () => {
+                await logout();
+                navigate("/");
+              }}
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all mt-8 font-semibold"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+            >
               <LogOut className="w-5 h-5" />
               <span>Keluar</span>
             </button>

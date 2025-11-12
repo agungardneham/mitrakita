@@ -1456,7 +1456,6 @@ const IKMDirectoryPage = () => {
                           className="text-gray-700"
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                         >
-                          Harga kompetitif dengan kualitas yang memuaskan.
                           Pelayanan ramah dan responsif.
                         </p>
                       </div>

@@ -297,6 +297,37 @@ const AcademicianDashboard = () => {
     await saveResearchesToFirestore(updated);
   };
 
+  const handleDownloadResearch = async (research) => {
+    const url = research.pdfUrl || research.pdf || null;
+    if (!url) {
+      alert("Tidak ada dokumen abstrak untuk diunduh.");
+      return;
+    }
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Gagal mengunduh file");
+      const blob = await res.blob();
+      const safeTitle = (research.title || "abstract")
+        .replace(/[^a-z0-9.\-_]/gi, "_")
+        .slice(0, 120);
+      const filename = safeTitle.endsWith(".pdf")
+        ? safeTitle
+        : `${safeTitle}.pdf`;
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error("Error downloading research PDF:", err);
+      // Fallback: open in new tab
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const submitResearchForm = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!user) {
@@ -312,7 +343,7 @@ const AcademicianDashboard = () => {
       try {
         const fileName = `abstracts/${user.uid}_${timestamp}_${researchPdfFile.name}`;
         const { error } = await supabase.storage
-          .from("academician-research-abstracts")
+          .from("academician-research")
           .upload(fileName, researchPdfFile);
         if (error) {
           console.error("Upload error:", error);
@@ -321,7 +352,7 @@ const AcademicianDashboard = () => {
           return;
         }
         const { data: publicUrlData } = supabase.storage
-          .from("academician-research-abstracts")
+          .from("academician-research")
           .getPublicUrl(fileName);
         pdfUrl = publicUrlData?.publicUrl;
       } catch (err) {
@@ -539,7 +570,7 @@ const AcademicianDashboard = () => {
               </div>
 
               {/* Pending Partnership Requests */}
-              {partnershipRequests.length > 0 && (
+              {/* {partnershipRequests.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
                   <h2
                     className="text-xl font-bold text-gray-800 mb-6"
@@ -602,7 +633,7 @@ const AcademicianDashboard = () => {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -1102,41 +1133,52 @@ const AcademicianDashboard = () => {
                     Histori Penelitian
                   </h2>
                   <div className="space-y-3">
-                    {profileData.researchHistory.map((research, idx) => (
-                      <div
-                        key={idx}
-                        className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 transition"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h3
-                              className="font-bold text-gray-800"
-                              style={{ fontFamily: "Montserrat, sans-serif" }}
-                            >
-                              {research.title}
-                            </h3>
-                            <p
-                              className="text-sm text-gray-600 mt-1"
-                              style={{ fontFamily: "Open Sans, sans-serif" }}
-                            >
-                              Status:{" "}
-                              <span
-                                className={`font-semibold ${
-                                  research.status === "Selesai"
-                                    ? "text-green-600"
-                                    : "text-yellow-600"
-                                }`}
+                    {(researches && researches.length > 0
+                      ? researches
+                      : profileData.researchHistory
+                    ).map((research, idx) => {
+                      const displayStatus =
+                        research.status === "completed"
+                          ? "Selesai"
+                          : research.status === "ongoing"
+                          ? "Berlangsung"
+                          : research.status || "-";
+                      const statusColor =
+                        displayStatus === "Selesai"
+                          ? "text-green-600"
+                          : "text-yellow-600";
+                      return (
+                        <div
+                          key={idx}
+                          className="border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 transition"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h3
+                                className="font-bold text-gray-800"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
                               >
-                                {research.status}
-                              </span>
-                            </p>
+                                {research.title}
+                              </h3>
+                              <p
+                                className="text-sm text-gray-600 mt-1"
+                                style={{ fontFamily: "Open Sans, sans-serif" }}
+                              >
+                                Status:{" "}
+                                <span
+                                  className={`font-semibold ${statusColor}`}
+                                >
+                                  {displayStatus}
+                                </span>
+                              </p>
+                            </div>
+                            <span className="text-sm font-semibold text-blue-600">
+                              {research.year}
+                            </span>
                           </div>
-                          <span className="text-sm font-semibold text-blue-600">
-                            {research.year}
-                          </span>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1298,8 +1340,17 @@ const AcademicianDashboard = () => {
                         >
                           Hapus
                         </button>
-                        <button className="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition">
-                          Lihat Detail
+                        <button
+                          onClick={() => handleDownloadResearch(research)}
+                          disabled={!(research.pdfUrl || research.pdf)}
+                          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold text-white transition ${
+                            {
+                              true: "bg-green-600 hover:bg-green-700",
+                            }[String(!!(research.pdfUrl || research.pdf))] ||
+                            "bg-gray-300 cursor-not-allowed"
+                          }`}
+                        >
+                          Unduh Dokumen
                         </button>
                       </div>
                     </div>
@@ -1812,7 +1863,7 @@ const AcademicianDashboard = () => {
                     Upload Dokumen Abstrak (.pdf){" "}
                     <span className="text-red-500">*</span>
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-green-500 transition">
+                  <label className="relative block border-2 border-dashed border-gray-300 rounded-xl p-4 text-center hover:border-green-500 transition cursor-pointer">
                     <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <p
                       className="text-gray-600 mb-2"
@@ -1820,14 +1871,16 @@ const AcademicianDashboard = () => {
                     >
                       Pilih file PDF abstrak (maks 10MB)
                     </p>
+
                     <input
                       type="file"
                       accept=".pdf"
                       onChange={(e) =>
                         setResearchPdfFile(e.target.files?.[0] || null)
                       }
-                      className="mx-auto"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
+
                     <p className="text-xs text-gray-500 mt-2">
                       {researchPdfFile
                         ? researchPdfFile.name
@@ -1835,7 +1888,7 @@ const AcademicianDashboard = () => {
                         ? "File terunggah"
                         : "Belum ada file"}
                     </p>
-                  </div>
+                  </label>
                 </div>
 
                 {/* Info Box */}

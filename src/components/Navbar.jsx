@@ -70,13 +70,15 @@ const Navbar = ({ onNavigate }) => {
             >
               Direktori IKM
             </Link>
-            <Link
-              to="/penelitian"
-              className="text-gray-700 hover:text-green-600 transition font-medium"
-              style={{ fontFamily: "Montserrat, sans-serif" }}
-            >
-              Penelitian
-            </Link>
+            {isLoggedIn && (
+              <Link
+                to="/penelitian"
+                className="text-gray-700 hover:text-green-600 transition font-medium"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+              >
+                Penelitian
+              </Link>
+            )}
             <Link
               to="/about"
               className="text-gray-700 hover:text-green-600 transition font-medium"
@@ -96,7 +98,7 @@ const Navbar = ({ onNavigate }) => {
                       navigate("/dashboard/akademisi");
                     }
                   }}
-                  className="bg-gradient-to-r from-green-600 to-green-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition-all font-semibold"
+                  className="bg-linear-to-r from-green-600 to-green-500 text-white px-6 py-2 rounded-2xl hover:shadow-lg transition-all font-semibold"
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
                   Dashboard
@@ -153,13 +155,15 @@ const Navbar = ({ onNavigate }) => {
             >
               Direktori IKM
             </Link>
-            <Link
-              to="/penelitian"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
-            >
-              Penelitian
-            </Link>
+            {isLoggedIn && (
+              <Link
+                to="/penelitian"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
+              >
+                Penelitian
+              </Link>
+            )}
             <Link
               to="/about"
               onClick={() => setMobileMenuOpen(false)}

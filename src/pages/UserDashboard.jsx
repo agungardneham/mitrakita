@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Users,
@@ -23,6 +23,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { supabase } from "../supabaseClient";
 
 // ============================================
 // USER/INDUSTRY DASHBOARD COMPONENT
@@ -30,21 +31,24 @@ import { useAuth } from "../context/AuthContext";
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [editingProfile, setEditingProfile] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [showManualPartnershipModal, setShowManualPartnershipModal] =
     useState(false);
+  const [manualPartnershipTarget, setManualPartnershipTarget] =
+    useState("active");
 
   // Profile Data State
   const [profileData, setProfileData] = useState({
-    fullName: "Ahmad Wijaya",
-    companyName: "PT Industri Maju Sejahtera",
-    position: "Procurement Manager",
-    department: "Supply Chain & Procurement",
+    fullName: "",
+    companyName: "",
+    position: "",
+    department: "",
     photo: "👨‍💼",
-    producedProducts: "Komponen elektronik, PCB Assembly, Wiring Harness",
-    neededProducts: "Komponen logam presisi, kemasan custom, furniture kantor",
-    bio: "Profesional di bidang procurement dengan pengalaman 10+ tahun dalam menjalin kemitraan strategis dengan supplier lokal.",
+    phoneNumber: "",
+    products: "",
+    needs: "",
+    bio: "",
   });
 
   // IKM Partnership Requests
@@ -110,11 +114,67 @@ const UserDashboard = () => {
     },
   ]);
 
+  // Photo Upload Modal State
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+
+  // Handle select file for upload
+  const handlePhotoFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    setPhotoFile(file);
+  };
+
+  // Upload to Supabase and save URL to Firestore
+  const handleUploadProfilePhoto = async () => {
+    if (!photoFile) {
+      alert("Silakan pilih file foto terlebih dahulu.");
+      return;
+    }
+    if (!user) {
+      alert("Silakan login terlebih dahulu.");
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const fileExt = photoFile.name.split(".").pop();
+      const fileName = `profile_${user.uid}_${Date.now()}.${fileExt}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from("user-profile-photos")
+        .upload(fileName, photoFile, { cacheControl: "3600", upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage
+        .from("user-profile-photos")
+        .getPublicUrl(data.path);
+
+      const photoUrl = publicData.publicUrl;
+
+      // Save URL to Firestore under users/{uid}.photo
+      const { getFirestore, doc, setDoc } = await import("firebase/firestore");
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      await setDoc(userDocRef, { photo: photoUrl }, { merge: true });
+
+      // Update local state
+      setProfileData((prev) => ({ ...prev, photo: photoUrl }));
+      setShowPhotoModal(false);
+      setPhotoFile(null);
+      alert("Foto profil berhasil diunggah.");
+    } catch (err) {
+      console.error("Error uploading profile photo:", err);
+      alert("Gagal mengunggah foto. Silakan coba lagi.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const sidebarItems = [
     { id: "overview", label: "Beranda", icon: <Home className="w-5 h-5" /> },
     {
       id: "profile",
-      label: "Profil Perusahaan",
+      label: "Edit Profil",
       icon: <Building2 className="w-5 h-5" />,
     },
     {
@@ -127,12 +187,174 @@ const UserDashboard = () => {
       label: "Kemitraan",
       icon: <Users className="w-5 h-5" />,
     },
-    { id: "orders", label: "Pesanan", icon: <Package className="w-5 h-5" /> },
   ];
 
   const handleProfileUpdate = (field, value) => {
     setProfileData({ ...profileData, [field]: value });
   };
+
+  // Partnership history state and edit helpers
+  const [partnershipHistory, setPartnershipHistory] = useState([]);
+  const [editingHistoryId, setEditingHistoryId] = useState(null);
+  const [editingHistoryData, setEditingHistoryData] = useState(null);
+
+  // Add a history entry (used by profile's "Tambah Kemitraan" or manual modal target)
+  const handleAddHistoryPartnership = async (partnershipData) => {
+    const newEntry = {
+      id: Date.now(),
+      ...partnershipData,
+      status: partnershipData.status || "completed",
+    };
+
+    setPartnershipHistory((prev) => [...prev, newEntry]);
+    setShowManualPartnershipModal(false);
+
+    if (!user) return;
+    try {
+      const { getFirestore, doc, updateDoc, arrayUnion } = await import(
+        "firebase/firestore"
+      );
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        partnershipHistory: arrayUnion(newEntry),
+      });
+    } catch (err) {
+      console.error("Error saving partnership history (primary):", err);
+      try {
+        const { getFirestore, doc, getDoc, setDoc } = await import(
+          "firebase/firestore"
+        );
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userDocRef);
+        const existing =
+          snap.exists() && Array.isArray(snap.data().partnershipHistory)
+            ? snap.data().partnershipHistory
+            : [];
+        await setDoc(
+          userDocRef,
+          { partnershipHistory: [...existing, newEntry] },
+          { merge: true }
+        );
+      } catch (err2) {
+        console.error("Error saving partnership history (fallback):", err2);
+      }
+    }
+  };
+
+  // Edit history
+  const handleEditHistoryPartnership = (history) => {
+    setEditingHistoryId(history.id);
+    setEditingHistoryData(history);
+  };
+
+  // Save edited history
+  const handleSaveEditedHistory = async () => {
+    if (!editingHistoryId || !editingHistoryData) return;
+
+    setPartnershipHistory((prev) =>
+      prev.map((h) => (h.id === editingHistoryId ? editingHistoryData : h))
+    );
+
+    if (!user) {
+      setEditingHistoryId(null);
+      setEditingHistoryData(null);
+      return;
+    }
+
+    try {
+      const { getFirestore, doc, getDoc, setDoc } = await import(
+        "firebase/firestore"
+      );
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userDocRef);
+      if (snap.exists() && Array.isArray(snap.data().partnershipHistory)) {
+        const updated = snap
+          .data()
+          .partnershipHistory.map((h) =>
+            h.id === editingHistoryId ? editingHistoryData : h
+          );
+        await setDoc(
+          userDocRef,
+          { partnershipHistory: updated },
+          { merge: true }
+        );
+      }
+    } catch (err) {
+      console.error("Error updating partnership history:", err);
+    }
+
+    setEditingHistoryId(null);
+    setEditingHistoryData(null);
+  };
+
+  // Delete a partnership entry from history (and active if present)
+  const handleDeleteHistoryPartnership = async (historyId) => {
+    setPartnershipHistory((prev) => prev.filter((h) => h.id !== historyId));
+    setActivePartnerships((prev) => prev.filter((a) => a.id !== historyId));
+
+    if (!user) return;
+    try {
+      const { getFirestore, doc, getDoc, setDoc } = await import(
+        "firebase/firestore"
+      );
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userDocRef);
+      if (snap.exists()) {
+        const historyUpdated = Array.isArray(snap.data().partnershipHistory)
+          ? snap.data().partnershipHistory.filter((h) => h.id !== historyId)
+          : [];
+        const activeUpdated = Array.isArray(snap.data().activePartnerships)
+          ? snap.data().activePartnerships.filter((a) => a.id !== historyId)
+          : [];
+        await setDoc(
+          userDocRef,
+          {
+            partnershipHistory: historyUpdated,
+            activePartnerships: activeUpdated,
+          },
+          { merge: true }
+        );
+      }
+    } catch (err) {
+      console.error("Error deleting partnership history:", err);
+    }
+  };
+
+  // Load profile & partnerships from Firestore on mount/user change
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user) return;
+      try {
+        const { getFirestore, doc, getDoc } = await import(
+          "firebase/firestore"
+        );
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          setProfileData((prev) => ({ ...prev, ...data }));
+          if (Array.isArray(data.activePartnerships)) {
+            setActivePartnerships(data.activePartnerships);
+          }
+          if (Array.isArray(data.partnershipHistory)) {
+            setPartnershipHistory(data.partnershipHistory);
+          }
+          if (Array.isArray(data.completedPartnerships)) {
+            setCompletedPartnerships(data.completedPartnerships);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading user data:", err);
+      }
+    };
+
+    loadUserData();
+  }, [user]);
 
   const handleVerifyPartnership = (id, action) => {
     const request = partnershipRequests.find((r) => r.id === id);
@@ -154,17 +376,69 @@ const UserDashboard = () => {
     setPartnershipRequests(partnershipRequests.filter((r) => r.id !== id));
   };
 
-  const handleAddManualPartnership = (partnershipData) => {
-    setActivePartnerships([
-      ...activePartnerships,
-      {
-        id: activePartnerships.length + 1,
-        ...partnershipData,
-        status: "active",
-      },
-    ]);
+  const handleAddManualPartnership = async (partnershipData) => {
+    const newPartnership = {
+      id: Date.now(),
+      ...partnershipData,
+      status: "active",
+    };
+
+    setActivePartnerships((prev) => [...prev, newPartnership]);
+    // Also add to history for unified management
+    setPartnershipHistory((prev) => [...prev, newPartnership]);
     setShowManualPartnershipModal(false);
+
+    if (!user) return;
+    try {
+      const { getFirestore, doc, updateDoc, arrayUnion } = await import(
+        "firebase/firestore"
+      );
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        activePartnerships: arrayUnion(newPartnership),
+        partnershipHistory: arrayUnion(newPartnership),
+      });
+    } catch (err) {
+      console.error("Error saving partnership to Firestore (primary):", err);
+      // fallback: merge and set
+      try {
+        const { getFirestore, doc, getDoc, setDoc } = await import(
+          "firebase/firestore"
+        );
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userDocRef);
+        const existingActive =
+          snap.exists() && Array.isArray(snap.data().activePartnerships)
+            ? snap.data().activePartnerships
+            : [];
+        const existingHistory =
+          snap.exists() && Array.isArray(snap.data().partnershipHistory)
+            ? snap.data().partnershipHistory
+            : [];
+        await setDoc(
+          userDocRef,
+          {
+            activePartnerships: [...existingActive, newPartnership],
+            partnershipHistory: [...existingHistory, newPartnership],
+          },
+          { merge: true }
+        );
+      } catch (err2) {
+        console.error(
+          "Error saving partnership to Firestore (fallback):",
+          err2
+        );
+      }
+    }
   };
+
+  const mergedPartnerships = React.useMemo(() => {
+    const ids = new Set(partnershipHistory.map((h) => h.id));
+    const activeNotInHistory = activePartnerships.filter((a) => !ids.has(a.id));
+    return [...partnershipHistory, ...activeNotInHistory];
+  }, [partnershipHistory, activePartnerships]);
 
   return (
     <div>
@@ -174,8 +448,18 @@ const UserDashboard = () => {
         <div className="w-64 bg-white shadow-lg hidden md:block">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-2">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-2xl">
-                {profileData.photo}
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-2xl overflow-hidden">
+                {typeof profileData.photo === "string" &&
+                (profileData.photo.indexOf("http") === 0 ||
+                  profileData.photo.indexOf("data:") === 0) ? (
+                  <img
+                    src={profileData.photo}
+                    alt="avatar"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{profileData.photo}</span>
+                )}
               </div>
               <div>
                 <h2
@@ -248,21 +532,6 @@ const UserDashboard = () => {
                     {activePartnerships.length}
                   </h3>
                   <p className="text-gray-600 text-sm">Kemitraan IKM</p>
-                </div>
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <Package className="w-8 h-8 text-green-600" />
-                    <span className="text-green-600 text-sm font-semibold">
-                      Total
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-1">
-                    {activePartnerships.reduce(
-                      (sum, p) => sum + p.orderCount,
-                      0
-                    )}
-                  </h3>
-                  <p className="text-gray-600 text-sm">Pesanan</p>
                 </div>
               </div>
 
@@ -407,7 +676,7 @@ const UserDashboard = () => {
                   className="text-3xl font-bold text-gray-800"
                   style={{ fontFamily: "Poppins, sans-serif" }}
                 >
-                  Profil Perusahaan
+                  Edit Profil
                 </h1>
                 <button
                   onClick={() => setEditingProfile(!editingProfile)}
@@ -441,16 +710,43 @@ const UserDashboard = () => {
                       </label>
                       {editingProfile ? (
                         <div className="flex items-center space-x-4">
-                          <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-5xl">
-                            {profileData.photo}
+                          <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-5xl overflow-hidden">
+                            {typeof profileData.photo === "string" &&
+                            (profileData.photo.indexOf("http") === 0 ||
+                              profileData.photo.indexOf("data:") === 0) ? (
+                              <img
+                                src={profileData.photo}
+                                alt="avatar"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-5xl">
+                                {profileData.photo}
+                              </span>
+                            )}
                           </div>
-                          <button className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition">
+                          <button
+                            onClick={() => setShowPhotoModal(true)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition"
+                          >
                             Unggah Foto
                           </button>
                         </div>
                       ) : (
-                        <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-5xl">
-                          {profileData.photo}
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-5xl overflow-hidden">
+                          {typeof profileData.photo === "string" &&
+                          (profileData.photo.indexOf("http") === 0 ||
+                            profileData.photo.indexOf("data:") === 0) ? (
+                            <img
+                              src={profileData.photo}
+                              alt="avatar"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-5xl">
+                              {profileData.photo}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -469,6 +765,29 @@ const UserDashboard = () => {
                             handleProfileUpdate("fullName", e.target.value)
                           }
                           disabled={!editingProfile}
+                          className={`w-full px-4 py-3 rounded-xl border-2 ${
+                            editingProfile
+                              ? "border-gray-300 focus:border-blue-500"
+                              : "border-gray-200 bg-gray-50"
+                          } focus:outline-none`}
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-semibold text-gray-700 mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Nomor Telepon
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.phoneNumber || ""}
+                          onChange={(e) =>
+                            handleProfileUpdate("phoneNumber", e.target.value)
+                          }
+                          disabled={!editingProfile}
+                          placeholder="08xxxxxxx"
                           className={`w-full px-4 py-3 rounded-xl border-2 ${
                             editingProfile
                               ? "border-gray-300 focus:border-blue-500"
@@ -577,12 +896,9 @@ const UserDashboard = () => {
                         <span className="text-red-500">*</span>
                       </label>
                       <textarea
-                        value={profileData.producedProducts}
+                        value={profileData.products}
                         onChange={(e) =>
-                          handleProfileUpdate(
-                            "producedProducts",
-                            e.target.value
-                          )
+                          handleProfileUpdate("products", e.target.value)
                         }
                         disabled={!editingProfile}
                         rows={3}
@@ -607,9 +923,9 @@ const UserDashboard = () => {
                         <span className="text-red-500">*</span>
                       </label>
                       <textarea
-                        value={profileData.neededProducts}
+                        value={profileData.needs}
                         onChange={(e) =>
-                          handleProfileUpdate("neededProducts", e.target.value)
+                          handleProfileUpdate("needs", e.target.value)
                         }
                         disabled={!editingProfile}
                         rows={3}
@@ -649,6 +965,172 @@ const UserDashboard = () => {
                     } focus:outline-none`}
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   />
+                </div>
+
+                {/* Histori Kemitraan IKM */}
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h2
+                    className="text-xl font-bold text-gray-800 mb-6"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Histori Kemitraan IKM
+                  </h2>
+                  {mergedPartnerships.length === 0 ? (
+                    <div className="bg-blue-50 rounded-xl p-6 text-center mb-6">
+                      <p
+                        className="text-gray-600 mb-0"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Histori Kemitraan IKM Belum Terisi
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 mb-6">
+                      {mergedPartnerships.map((h) => (
+                        <div
+                          key={h.id}
+                          className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100"
+                        >
+                          {editingHistoryId === h.id ? (
+                            <div className="space-y-3">
+                              <input
+                                type="text"
+                                value={editingHistoryData.ikmName}
+                                onChange={(e) =>
+                                  setEditingHistoryData({
+                                    ...editingHistoryData,
+                                    ikmName: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                placeholder="Nama IKM"
+                              />
+                              <input
+                                type="text"
+                                value={editingHistoryData.product}
+                                onChange={(e) =>
+                                  setEditingHistoryData({
+                                    ...editingHistoryData,
+                                    product: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                placeholder="Produk/Layanan"
+                              />
+                              <div className="grid grid-cols-2 gap-3">
+                                <input
+                                  type="date"
+                                  value={editingHistoryData.startDate}
+                                  onChange={(e) =>
+                                    setEditingHistoryData({
+                                      ...editingHistoryData,
+                                      startDate: e.target.value,
+                                    })
+                                  }
+                                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                />
+                                <input
+                                  type="text"
+                                  value={editingHistoryData.duration}
+                                  onChange={(e) =>
+                                    setEditingHistoryData({
+                                      ...editingHistoryData,
+                                      duration: e.target.value,
+                                    })
+                                  }
+                                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                                  placeholder="Durasi"
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingHistoryId(null);
+                                    setEditingHistoryData(null);
+                                  }}
+                                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-400 transition"
+                                  style={{
+                                    fontFamily: "Montserrat, sans-serif",
+                                  }}
+                                >
+                                  Batal
+                                </button>
+                                <button
+                                  onClick={handleSaveEditedHistory}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition"
+                                  style={{
+                                    fontFamily: "Montserrat, sans-serif",
+                                  }}
+                                >
+                                  Simpan
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="font-semibold text-gray-800 text-lg">
+                                  {h.ikmName}
+                                </div>
+                                <div className="text-sm text-gray-600 mt-1">
+                                  Produk: {h.product}
+                                </div>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  Mulai:{" "}
+                                  {h.startDate
+                                    ? new Date(h.startDate).toLocaleDateString(
+                                        "id-ID"
+                                      )
+                                    : "-"}{" "}
+                                  • Durasi: {h.duration}
+                                </div>
+                              </div>
+                              {editingProfile && (
+                                <div className="flex space-x-2 ml-4">
+                                  <button
+                                    onClick={() =>
+                                      handleEditHistoryPartnership(h)
+                                    }
+                                    className="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
+                                    style={{
+                                      fontFamily: "Montserrat, sans-serif",
+                                    }}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleDeleteHistoryPartnership(h.id)
+                                    }
+                                    className="px-3 py-1 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition"
+                                    style={{
+                                      fontFamily: "Montserrat, sans-serif",
+                                    }}
+                                  >
+                                    Hapus
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {editingProfile && (
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          setManualPartnershipTarget("history");
+                          setShowManualPartnershipModal(true);
+                        }}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition"
+                        style={{ fontFamily: "Montserrat, sans-serif" }}
+                      >
+                        + Tambah Kemitraan
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Save Button */}
@@ -1062,18 +1544,37 @@ const UserDashboard = () => {
 
               <form
                 className="p-6 space-y-6"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   const formData = new FormData(e.target);
-                  handleAddManualPartnership({
+                  const payload = {
                     ikmName: formData.get("ikmName"),
                     product: formData.get("product"),
                     startDate: formData.get("startDate"),
-                    orderCount: parseInt(formData.get("orderCount")) || 0,
-                    totalValue: formData.get("totalValue"),
-                    lastOrder: formData.get("lastOrder") || "-",
+                    // Capture duration from the form; keep orderCount/totalValue
+                    // with sensible defaults for compatibility with existing UI.
+                    duration: formData.get("duration") || "",
+                    orderCount: 0,
+                    totalValue: "",
+                    lastOrder: "-",
                     rating: 0,
-                  });
+                  };
+                  try {
+                    if (manualPartnershipTarget === "history") {
+                      await handleAddHistoryPartnership(payload);
+                    } else {
+                      await handleAddManualPartnership(payload);
+                    }
+                    setShowManualPartnershipModal(false);
+                    alert(
+                      "Data kemitraan sudah tersimpan. Terima kasih sudah mengisi."
+                    );
+                  } catch (err) {
+                    console.error("Error saving manual partnership:", err);
+                    alert(
+                      "Terjadi kesalahan saat menyimpan data. Silakan coba lagi."
+                    );
+                  }
                 }}
               >
                 {/* IKM Name */}
@@ -1130,56 +1631,24 @@ const UserDashboard = () => {
                   />
                 </div>
 
-                {/* Order Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      className="block text-sm font-semibold text-gray-700 mb-2"
-                      style={{ fontFamily: "Montserrat, sans-serif" }}
-                    >
-                      Jumlah Pesanan (Opsional)
-                    </label>
-                    <input
-                      type="number"
-                      name="orderCount"
-                      min="0"
-                      placeholder="0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      style={{ fontFamily: "Open Sans, sans-serif" }}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-semibold text-gray-700 mb-2"
-                      style={{ fontFamily: "Montserrat, sans-serif" }}
-                    >
-                      Total Nilai (Opsional)
-                    </label>
-                    <input
-                      type="text"
-                      name="totalValue"
-                      placeholder="Rp 0"
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      style={{ fontFamily: "Open Sans, sans-serif" }}
-                    />
-                  </div>
-                </div>
-
-                {/* Last Order Date */}
+                {/* Durasi Kemitraan (replaces order count / total value inputs) */}
                 <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Tanggal Pesanan Terakhir (Opsional)
+                    Durasi Kemitraan (Opsional)
                   </label>
                   <input
-                    type="date"
-                    name="lastOrder"
+                    type="text"
+                    name="duration"
+                    placeholder="Contoh: 6 bulan"
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   />
                 </div>
+
+                {/* (Removed last order date input; duration above replaces it) */}
 
                 {/* Info Box */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -1188,8 +1657,7 @@ const UserDashboard = () => {
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
                     ℹ️ Data kemitraan manual akan disimpan untuk keperluan
-                    dokumentasi dan tracking. Anda dapat memberikan rating
-                    setelah kemitraan ditambahkan.
+                    dokumentasi dan tracking.
                   </p>
                 </div>
 
@@ -1212,6 +1680,116 @@ const UserDashboard = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Photo Upload Modal */}
+        {showPhotoModal && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowPhotoModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl max-w-lg w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold">Unggah Foto Profil</h2>
+                <button
+                  onClick={() => setShowPhotoModal(false)}
+                  className="text-gray-600 hover:bg-gray-100 rounded-full p-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Unggah foto profil Anda. Format yang disarankan: JPG/PNG, ukuran
+                maksimal 2MB.
+              </p>
+
+              <div className="space-y-4">
+                <div className="border-dashed border-2 border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center text-gray-500">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-6 h-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 16V4m0 0L3 8m4-4 4 4M17 8v8a4 4 0 01-4 4H7"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">
+                        Pilih Foto Profil
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Format JPG/PNG. Maksimal 2MB.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <label className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer hover:bg-blue-700">
+                      Pilih File
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoFileChange}
+                        className="hidden"
+                      />
+                    </label>
+                    <div className="text-sm text-gray-700">
+                      {photoFile ? (
+                        <span className="font-medium">{photoFile.name}</span>
+                      ) : (
+                        <span className="text-gray-400">
+                          Belum ada file dipilih
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {photoFile && (
+                  <div className="border rounded-lg p-3 mt-4">
+                    <p className="text-sm font-semibold">Preview:</p>
+                    <img
+                      src={URL.createObjectURL(photoFile)}
+                      alt="preview"
+                      className="mt-2 max-h-48 object-contain"
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setPhotoFile(null);
+                      setShowPhotoModal(false);
+                    }}
+                    className="px-4 py-2 bg-gray-200 rounded-lg"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleUploadProfilePhoto}
+                    disabled={uploadingPhoto}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                  >
+                    {uploadingPhoto ? "Mengunggah..." : "Unggah Foto"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

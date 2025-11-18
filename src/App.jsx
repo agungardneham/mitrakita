@@ -10,6 +10,7 @@ import ResearchPage from "./pages/ResearchPage";
 import IKMDashboard from "./pages/IKMDashboard";
 import AcademicianDashboard from "./pages/AcademicianDashboard";
 import UserDashboard from "./pages/UserDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -22,13 +23,38 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/direktori" element={<IKMDirectoryPage />} />
-          <Route path="/penelitian" element={<ResearchPage />} />
-          <Route path="/dashboard/ikm" element={<IKMDashboard />} />
+          <Route
+            path="/penelitian"
+            element={
+              <ProtectedRoute>
+                <ResearchPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/ikm"
+            element={
+              <ProtectedRoute allowedRoles={["ikm"]}>
+                <IKMDashboard />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/dashboard/akademisi"
-            element={<AcademicianDashboard />}
+            element={
+              <ProtectedRoute allowedRoles={["akademisi"]}>
+                <AcademicianDashboard />
+              </ProtectedRoute>
+            }
           />
-          <Route path="/dashboard/user" element={<UserDashboard />} />
+          <Route
+            path="/dashboard/user"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>

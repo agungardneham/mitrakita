@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Users,
@@ -20,233 +20,30 @@ import {
   Settings,
   LogOut,
   MessageCircle,
+  Download,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import db from "../firebase-config";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { GoogleGenAI } from "@google/genai";
+import { supabase } from "../supabaseClient";
 
-const dummyResearchData = [
-  {
-    id: 1,
-    title:
-      "Optimalisasi Proses Finishing Furniture Menggunakan Teknologi UV Coating",
-    author: "Dr. Budi Santoso, M.T.",
-    institution: "Institut Teknologi Bandung",
-    year: 2024,
-    field: "Furniture & Kerajinan",
-    status: "Sedang Berlangsung",
-    expectedCollab:
-      "Bermitra dengan IKM furniture untuk uji coba skala produksi dan penerapan mesin UV coating; dukungan material, akses lini produksi, dan umpan balik operasional.",
-    abstract:
-      "Penelitian ini mengembangkan metode finishing furniture menggunakan teknologi UV coating yang lebih efisien dan ramah lingkungan. Hasil uji coba menunjukkan peningkatan kecepatan produksi hingga 40% dengan kualitas hasil yang lebih baik.",
-    fullAbstract:
-      "Industri furniture Indonesia menghadapi tantangan dalam proses finishing yang memakan waktu lama dan menggunakan bahan kimia berbahaya. Penelitian ini bertujuan mengembangkan metode finishing menggunakan teknologi UV coating yang lebih cepat, efisien, dan ramah lingkungan. Melalui eksperimen pada 100 sampel produk furniture, hasil menunjukkan bahwa teknologi UV coating dapat mengurangi waktu finishing dari 24 jam menjadi hanya 2 jam, meningkatkan ketahanan produk terhadap goresan hingga 60%, dan mengurangi emisi VOC hingga 85%. Teknologi ini siap diterapkan pada industri kecil menengah dengan investasi mesin yang terjangkau.",
-    keywords: ["UV Coating", "Furniture", "Finishing", "Ramah Lingkungan"],
-    summary:
-      "Metode baru menggunakan sinar UV untuk mengeringkan cat furniture dalam 2 jam (sebelumnya 24 jam), lebih kuat, dan tidak berbahaya bagi lingkungan.",
-    views: 342,
-    downloads: 89,
-    collaborations: 5,
-    aiSummaryGenerated: false,
-  },
-  {
-    id: 2,
-    title:
-      "Pengembangan Tekstil Antibakteri dari Ekstrak Daun Sirih untuk Industri Garmen",
-    author: "Prof. Dr. Siti Nurhaliza, M.Sc.",
-    institution: "Universitas Gadjah Mada",
-    year: 2024,
-    field: "Tekstil & Garmen",
-    status: "Sedang Berlangsung",
-    expectedCollab:
-      "Kolaborasi dengan pabrik garmen untuk uji coba produk pilot, pengujian kenyamanan dan ketahanan pencucian, serta dukungan fasilitas produksi untuk skalabilitas.",
-    abstract:
-      "Riset ini berhasil mengembangkan tekstil dengan sifat antibakteri alami menggunakan ekstrak daun sirih. Tekstil terbukti efektif membunuh 99.9% bakteri penyebab bau dan aman untuk kulit sensitif.",
-    fullAbstract:
-      "Meningkatnya kesadaran konsumen terhadap produk kesehatan mendorong kebutuhan tekstil dengan sifat antibakteri. Penelitian ini mengeksplorasi potensi ekstrak daun sirih sebagai agen antibakteri alami pada tekstil. Melalui metode pad-dry-cure, ekstrak daun sirih berhasil difiksasi pada serat katun dan polyester. Hasil pengujian mikrobiologi menunjukkan efektivitas antibakteri hingga 99.9% terhadap Staphylococcus aureus dan E. coli. Sifat antibakteri bertahan hingga 50 kali pencucian. Tekstil ini cocok untuk pakaian olahraga, seragam medis, dan produk garmen lainnya. Biaya produksi hanya meningkat 15% dari tekstil konvensional.",
-    keywords: ["Tekstil", "Antibakteri", "Daun Sirih", "Garmen"],
-    summary:
-      "Kain yang direndam ekstrak daun sirih bisa membunuh bakteri penyebab bau badan hingga 99.9% dan tahan sampai 50 kali cuci.",
-    views: 478,
-    downloads: 124,
-    collaborations: 8,
-    aiSummaryGenerated: false,
-  },
-  {
-    id: 3,
-    title:
-      "Sistem Monitoring Kualitas Produksi Real-Time Berbasis IoT untuk IKM Logam",
-    author: "Dr. Ir. Ahmad Fauzi, M.Eng.",
-    institution: "Institut Teknologi Sepuluh Nopember",
-    year: 2023,
-    field: "Logam & Metalurgi",
-    status: "Selesai",
-
-    abstract:
-      "Sistem IoT ini memungkinkan monitoring kualitas produksi secara real-time dengan akurasi 95%. Dapat mendeteksi cacat produksi sejak dini dan mengurangi produk gagal hingga 30%.",
-    fullAbstract:
-      "Industri logam kecil menengah sering mengalami masalah kualitas produk yang tidak konsisten akibat keterbatasan sistem monitoring. Penelitian ini mengembangkan sistem monitoring berbasis IoT yang terintegrasi dengan sensor kualitas, kamera AI, dan dashboard analytics. Sistem mampu mendeteksi 15 jenis cacat produksi secara otomatis dengan akurasi 95%. Data real-time memungkinkan operator mengambil keputusan cepat untuk koreksi proses. Implementasi pada 3 IKM pilot menunjukkan penurunan reject rate dari 12% menjadi 4% dalam 3 bulan. Investasi sistem dapat balik modal dalam 18 bulan.",
-    keywords: ["IoT", "Monitoring", "Kualitas", "Logam", "Smart Factory"],
-    summary:
-      "Sensor pintar yang dipasang di mesin produksi bisa mendeteksi produk cacat secara otomatis dan mengirim notifikasi ke handphone operator.",
-    views: 623,
-    downloads: 198,
-    collaborations: 12,
-    aiSummaryGenerated: false,
-  },
-  {
-    id: 4,
-    title:
-      "Formulasi Kemasan Biodegradable dari Limbah Kulit Singkong untuk Industri Pangan",
-    author: "Dr. Rahma Wijayanti, S.T., M.T.",
-    institution: "Universitas Brawijaya",
-    year: 2024,
-    field: "Kemasan & Packaging",
-    status: "Sedang Berlangsung",
-    expectedCollab:
-      "Kerja sama dengan produsen makanan untuk pengujian kemasan pada produk nyata, uji keamanan pangan, serta pasokan limbah kulit singkong sebagai bahan baku dan optimasi proses produksi.",
-    abstract:
-      "Kemasan ramah lingkungan dari kulit singkong yang dapat terurai dalam 90 hari. Kekuatan dan ketahanan air setara dengan plastik konvensional namun 100% biodegradable.",
-    fullAbstract:
-      "Masalah sampah plastik kemasan mendorong pencarian alternatif material biodegradable. Penelitian ini memanfaatkan limbah kulit singkong yang melimpah sebagai bahan baku kemasan. Melalui proses ekstraksi pati, modifikasi kimia, dan pembentukan film, dihasilkan kemasan dengan tensile strength 45 MPa dan water resistance hingga 72 jam. Kemasan dapat terurai sempurna dalam 90 hari di kondisi kompos. Uji packaging pada produk makanan kering menunjukkan kemasan mampu menjaga kesegaran produk sama dengan plastik PE. Biaya produksi 20% lebih tinggi namun dapat bersaing dengan premium eco-packaging.",
-    keywords: ["Biodegradable", "Kemasan", "Singkong", "Ramah Lingkungan"],
-    summary:
-      "Kemasan makanan dari kulit singkong yang bisa hancur sendiri dalam 3 bulan, tidak mencemari lingkungan, dan sama kuatnya dengan plastik biasa.",
-    views: 556,
-    downloads: 167,
-    collaborations: 9,
-    aiSummaryGenerated: false,
-  },
-  {
-    id: 5,
-    title:
-      "Penggunaan Enzim Alami untuk Meningkatkan Daya Tahan Produk Makanan Tanpa Pengawet",
-    author: "Prof. Dr. Hendra Kusuma, M.Si.",
-    institution: "Universitas Airlangga",
-    year: 2023,
-    field: "Makanan & Minuman",
-    status: "Selesai",
-
-    abstract:
-      "Penelitian tentang enzim alami dari buah-buahan tropis yang dapat memperpanjang masa simpan produk makanan hingga 200% tanpa pengawet kimia.",
-    fullAbstract:
-      "Konsumen semakin menghindari makanan dengan pengawet sintetis. Penelitian ini mengeksplorasi potensi enzim lisosom dari ekstrak nanas, pepaya, dan jambu biji sebagai pengawet alami. Enzim ini efektif menghambat pertumbuhan mikroba pembusuk tanpa mengubah rasa dan tekstur makanan. Pengujian pada 8 jenis produk makanan menunjukkan perpanjangan masa simpan 2-3 kali lipat. Enzim stabil pada suhu ruang dan pH 4-7. Aplikasi potensial pada produk bakery, snack, dan frozen food. Biaya ekstraksi enzim masih tinggi dan perlu optimasi untuk skala industri.",
-    keywords: ["Enzim", "Pengawet Alami", "Makanan", "Food Safety"],
-    summary:
-      "Cairan dari buah nanas dan pepaya bisa membuat makanan tahan lama 2-3 kali lipat tanpa pakai bahan pengawet kimia.",
-    views: 412,
-    downloads: 103,
-    collaborations: 6,
-    aiSummaryGenerated: false,
-  },
-  {
-    id: 6,
-    title:
-      "Implementasi Machine Learning untuk Prediksi Demand Produksi di IKM Tekstil",
-    author: "Dr. Dimas Prasetyo, S.Kom., M.Kom.",
-    institution: "Universitas Indonesia",
-    year: 2024,
-    field: "Tekstil & Garmen",
-    status: "Sedang Berlangsung",
-    expectedCollab:
-      "Akses data penjualan historis dari IKM tekstil, kerja sama implementasi di lini produksi, dan umpan balik operasional untuk meningkatkan akurasi model dan integrasi ke proses bisnis.",
-    abstract:
-      "Sistem AI yang dapat memprediksi permintaan pasar dengan akurasi 87%, membantu IKM mengurangi overstock hingga 40% dan meningkatkan efisiensi produksi.",
-    fullAbstract:
-      "Fluktuasi permintaan pasar menyebabkan IKM tekstil sering mengalami overstock atau stockout. Penelitian ini mengembangkan model machine learning berbasis Random Forest dan LSTM untuk prediksi demand. Model dilatih menggunakan data historis penjualan, tren fashion, musim, dan faktor ekonomi. Akurasi prediksi mencapai 87% untuk forecast 3 bulan ke depan. Implementasi pada 5 IKM menunjukkan pengurangan inventory cost 35% dan peningkatan service level 25%. Sistem dapat diakses melalui dashboard web yang user-friendly. Rekomendasi produksi otomatis membantu planning produksi lebih optimal.",
-    keywords: ["Machine Learning", "Demand Forecasting", "Tekstil", "AI"],
-    summary:
-      "Komputer pintar yang bisa menebak berapa banyak baju yang akan laku bulan depan dengan tingkat ketepatan 87%, sehingga pabrik tidak perlu menumpuk stok berlebihan.",
-    views: 789,
-    downloads: 234,
-    collaborations: 15,
-    aiSummaryGenerated: false,
-  },
-];
-
-// Dummy IKM Data for Collaboration
-const dummyCollaborationIKM = [
-  {
-    id: 1,
-    name: "CV Furniture Jaya Abadi",
-    field: "Furniture & Kerajinan",
-    status: "Aktif",
-    research: "Optimalisasi Proses Finishing",
-    progress: 75,
-    machines: [
-      {
-        spesifikasi: "Mesin UV Coating Model UV-3000",
-        jumlah: 2,
-        kapasitas: "50 unit/jam",
-      },
-      {
-        spesifikasi: "Spray Booth Kabin Semi-Otomatis",
-        jumlah: 1,
-        kapasitas: "30 unit/jam",
-      },
-      {
-        spesifikasi: "Mesin Amplas & Finishing (Sanding)",
-        jumlah: 3,
-        kapasitas: "80 unit/jam",
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "UD Tekstil Nusantara",
-    field: "Tekstil & Garmen",
-    status: "Diajukan",
-    research: "Tekstil Antibakteri",
-    progress: 15,
-    machines: [
-      {
-        spesifikasi: "Mesin Tenun Jalanan (Weaving Machine)",
-        jumlah: 4,
-        kapasitas: "200 m/jam",
-      },
-      {
-        spesifikasi: "Mesin Dyeing (Batch Dyeing)",
-        jumlah: 1,
-        kapasitas: "500 kg/batch",
-      },
-      {
-        spesifikasi: "Mesin Jahit Industri (High-speed Sewing)",
-        jumlah: 8,
-        kapasitas: "100 potong/jam",
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "PT Logam Presisi Indo",
-    field: "Logam & Metalurgi",
-    status: "Selesai",
-    research: "Sistem Monitoring IoT",
-    progress: 100,
-    machines: [
-      {
-        spesifikasi: "Mesin CNC Lathe Model CL-500",
-        jumlah: 2,
-        kapasitas: "120 komponen/hari",
-      },
-      {
-        spesifikasi: "Mesin Press Hidrolik 50T",
-        jumlah: 1,
-        kapasitas: "300 press/hari",
-      },
-      {
-        spesifikasi: "Peralatan Las MIG/TIG",
-        jumlah: 4,
-        kapasitas: "— (kapasitas tergantung job)",
-      },
-    ],
-  },
-];
+// Research data now loaded from Firestore per-academician (see useEffect below)
 
 const ResearchPage = () => {
-  const [activeTab, setActiveTab] = useState("feed"); // feed, upload
-  const [researchList] = useState(dummyResearchData);
-  const [filteredResearch, setFilteredResearch] = useState(dummyResearchData);
+  const [activeTab, _setActiveTab] = useState("feed"); // feed, upload
+  const [researchList, setResearchList] = useState([]);
+  const [filteredResearch, setFilteredResearch] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedResearch, setSelectedResearch] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedField, setSelectedField] = useState("");
@@ -254,9 +51,12 @@ const ResearchPage = () => {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState("");
-  const [expectedCollab, setExpectedCollab] = useState("");
+  const [aiSummaries, setAiSummaries] = useState({});
+  const [aiSummaryLoadingId, setAiSummaryLoadingId] = useState(null);
+  const [profileUser, setProfileUser] = useState(null);
+  const [profileUserResearches, setProfileUserResearches] = useState([]);
+  const [_profileLoading, setProfileLoading] = useState(false);
+  const [_profileImageError, setProfileImageError] = useState(false);
 
   const fields = [
     "Semua",
@@ -271,7 +71,7 @@ const ResearchPage = () => {
 
   // Filter Research
   const applyFilters = () => {
-    let filtered = researchList;
+    let filtered = [...researchList];
 
     if (searchQuery) {
       filtered = filtered.filter(
@@ -311,6 +111,28 @@ const ResearchPage = () => {
     setFilteredResearch(filtered);
   };
 
+  // Format phone numbers into wa.me-friendly form (Indonesia): convert leading '08' -> '628'
+  const formatPhoneForWa = (raw) => {
+    if (!raw) return "";
+    let s = String(raw).trim();
+    // remove leading + and all non-digit chars
+    s = s.replace(/^\+/, "").replace(/[^0-9]/g, "");
+    if (!s) return "";
+    // If starts with '08' -> '628' + rest (common Indonesian mobile)
+    if (s.startsWith("08")) {
+      return "628" + s.slice(2);
+    }
+    // If starts with '8' (missing leading zero) -> assume local and add '62'
+    if (s.startsWith("8")) {
+      return "62" + s;
+    }
+    // If starts with single 0 (not 08) replace leading 0 with 62
+    if (s.startsWith("0")) {
+      return "62" + s.slice(1);
+    }
+    // If already starts with country code (62) keep
+    return s;
+  };
   const resetFilters = () => {
     setSearchQuery("");
     setSelectedField("");
@@ -320,15 +142,492 @@ const ResearchPage = () => {
     setFilteredResearch(researchList);
   };
 
-  // AI Summarizer Placeholder
-  const generateAISummary = () => {
-    // AI Integration Placeholder: This will be connected to AI API in future
-    setAiSummaryLoading(true);
-    setTimeout(() => {
-      const updated = { ...selectedResearch, aiSummaryGenerated: true };
-      setSelectedResearch(updated);
-      setAiSummaryLoading(false);
-    }, 2000);
+  // Fetch researches from Firestore: for each user with role 'academician', read their 'researches' subcollection
+  useEffect(() => {
+    const fetchResearches = async () => {
+      setLoading(true);
+      try {
+        const usersQ = query(
+          collection(db, "users"),
+          where("role", "==", "academician")
+        );
+        const usersSnap = await getDocs(usersQ);
+        const aggregated = [];
+
+        for (const userDoc of usersSnap.docs) {
+          const userData = userDoc.data() || {};
+
+          // try to read subcollection 'researches' under this user
+          const researchesCol = collection(
+            db,
+            "users",
+            userDoc.id,
+            "researches"
+          );
+          let foundInSubcollection = false;
+          try {
+            const researchesSnap = await getDocs(researchesCol);
+            if (!researchesSnap.empty) {
+              researchesSnap.forEach((rDoc) => {
+                const rData = rDoc.data() || {};
+                const researchObj = {
+                  id: `${userDoc.id}_${rDoc.id}`,
+                  title:
+                    rData.title ||
+                    rData.name ||
+                    rData.topic ||
+                    "Untitled Research",
+                  abstract:
+                    rData.abstract || rData.summary || rData.description || "",
+                  fullAbstract:
+                    rData.fullAbstract ||
+                    rData.full_description ||
+                    rData.description ||
+                    "",
+                  expectedCollab:
+                    rData.expectedCollab ||
+                    rData.expected_collab ||
+                    rData.collaboration ||
+                    "",
+                  // keep legacy singular/plural keys available for UI
+                  collaboration:
+                    rData.collaboration ||
+                    rData.expectedCollab ||
+                    rData.expected_collab ||
+                    "",
+                  futureplan:
+                    rData.futureplan ||
+                    rData.future_plan ||
+                    rData.futurePlan ||
+                    "",
+                  field: rData.field || rData.category || "",
+                  year: rData.year || rData.publishedYear || null,
+                  status: rData.status || "",
+                  keywords: Array.isArray(rData.keywords) ? rData.keywords : [],
+                  views: rData.views || 0,
+                  downloads: rData.downloads || 0,
+                  collaborations: rData.collaborations || 0,
+                  author:
+                    userData.displayName ||
+                    userData.name ||
+                    userData.fullName ||
+                    userData.email ||
+                    "",
+                  email:
+                    rData.email ||
+                    rData.emailAddress ||
+                    rData.email_address ||
+                    userData.email ||
+                    "",
+                  // prefer researcher-specific fields from the research doc, then fallback to user profile
+                  academicianName:
+                    rData.academicianName ||
+                    rData.academician_name ||
+                    userData.academicianName ||
+                    userData.displayName ||
+                    userData.name ||
+                    userData.fullName ||
+                    "",
+                  frontDegree:
+                    rData.frontDegree ||
+                    rData.front_degree ||
+                    userData.frontDegree ||
+                    userData.front_degree ||
+                    "",
+                  backDegree:
+                    rData.backDegree ||
+                    rData.back_degree ||
+                    userData.backDegree ||
+                    userData.back_degree ||
+                    "",
+                  institution:
+                    userData.institution || userData.affiliation || "",
+                  phone:
+                    rData.phone ||
+                    rData.phoneNumber ||
+                    rData.phone_number ||
+                    userData.phone ||
+                    userData.phoneNumber ||
+                    userData.mobile ||
+                    "",
+                  // PDF file references (may be full URL or supabase storage path)
+                  pdfUrl:
+                    rData.pdfUrl ||
+                    rData.pdf_url ||
+                    rData.fileUrl ||
+                    rData.file_url ||
+                    rData.publicUrl ||
+                    "",
+                  supabasePath:
+                    rData.supabasePath ||
+                    rData.storagePath ||
+                    rData.filePath ||
+                    rData.path ||
+                    "",
+                  photoUrl: rData.photoUrl || userData.photoUrl || "",
+                  ownerId: userDoc.id,
+                  docId: rDoc.id,
+                };
+                aggregated.push(researchObj);
+              });
+              foundInSubcollection = true;
+            }
+          } catch (err) {
+            // if subcollection doesn't exist or read fails, log and continue
+            console.warn(
+              "ResearchPage: error reading researches subcollection for user",
+              userDoc.id,
+              err
+            );
+          }
+
+          // Fallback: some projects store researches as an array field on the user doc
+          if (!foundInSubcollection) {
+            const userResearches =
+              userData.researches || userData.research || null;
+            if (Array.isArray(userResearches) && userResearches.length) {
+              // found researches in user document
+              userResearches.forEach((rItem, idx) => {
+                const rData = rItem || {};
+                const researchObj = {
+                  id: `${userDoc.id}_field_${idx}`,
+                  title:
+                    rData.title ||
+                    rData.name ||
+                    rData.topic ||
+                    "Untitled Research",
+                  abstract:
+                    rData.abstract || rData.summary || rData.description || "",
+                  fullAbstract:
+                    rData.fullAbstract ||
+                    rData.full_description ||
+                    rData.description ||
+                    "",
+                  expectedCollab:
+                    rData.expectedCollab ||
+                    rData.expected_collab ||
+                    rData.collaboration ||
+                    "",
+                  // keep legacy singular/plural keys available for UI
+                  collaboration:
+                    rData.collaboration ||
+                    rData.expectedCollab ||
+                    rData.expected_collab ||
+                    "",
+                  futureplan:
+                    rData.futureplan ||
+                    rData.future_plan ||
+                    rData.futurePlan ||
+                    "",
+                  field: rData.field || rData.category || "",
+                  year: rData.year || rData.publishedYear || null,
+                  status: rData.status || "",
+                  keywords: Array.isArray(rData.keywords) ? rData.keywords : [],
+                  views: rData.views || 0,
+                  downloads: rData.downloads || 0,
+                  collaborations: rData.collaborations || 0,
+                  author:
+                    userData.displayName ||
+                    userData.name ||
+                    userData.fullName ||
+                    userData.email ||
+                    "",
+                  email:
+                    rData.email ||
+                    rData.emailAddress ||
+                    rData.email_address ||
+                    userData.email ||
+                    "",
+                  // for user-stored research entries, allow title/item to include name/degree
+                  academicianName:
+                    rData.academicianName ||
+                    rData.academician_name ||
+                    userData.academicianName ||
+                    userData.displayName ||
+                    userData.name ||
+                    userData.fullName ||
+                    "",
+                  frontDegree:
+                    rData.frontDegree ||
+                    rData.front_degree ||
+                    userData.frontDegree ||
+                    userData.front_degree ||
+                    "",
+                  backDegree:
+                    rData.backDegree ||
+                    rData.back_degree ||
+                    userData.backDegree ||
+                    userData.back_degree ||
+                    "",
+                  institution:
+                    userData.institution || userData.affiliation || "",
+                  phone:
+                    rData.phone ||
+                    rData.phoneNumber ||
+                    rData.phone_number ||
+                    userData.phone ||
+                    userData.phoneNumber ||
+                    userData.mobile ||
+                    "",
+                  // PDF file references (may be full URL or supabase storage path)
+                  pdfUrl:
+                    rData.pdfUrl ||
+                    rData.pdf_url ||
+                    rData.fileUrl ||
+                    rData.file_url ||
+                    rData.publicUrl ||
+                    "",
+                  supabasePath:
+                    rData.supabasePath ||
+                    rData.storagePath ||
+                    rData.filePath ||
+                    rData.path ||
+                    "",
+                  ownerId: userDoc.id,
+                  docId: null,
+                };
+                aggregated.push(researchObj);
+              });
+            }
+          }
+        }
+
+        // Sort newest first by year if available
+        aggregated.sort((a, b) => (b.year || 0) - (a.year || 0));
+        setResearchList(aggregated);
+        setFilteredResearch(aggregated);
+      } catch (error) {
+        console.error("Error fetching researches:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResearches();
+  }, []);
+
+  // AI Summarizer: send abstract to Gemini/Generative Language API
+  // Normalize various shapes of AI SDK / REST responses into a string
+  const normalizeAIResponse = (item) => {
+    if (item == null) return "";
+    if (typeof item === "string") return item;
+    if (typeof item === "object") {
+      // Common SDK shapes
+      if (typeof item.output === "string") return item.output;
+      if (typeof item.text === "string") return item.text;
+      if (typeof item.content === "string") return item.content;
+      if (item.outputText && typeof item.outputText === "string")
+        return item.outputText;
+      if (item.message && typeof item.message === "string") return item.message;
+
+      // If it's an array-like content field
+      if (Array.isArray(item.output))
+        return item.output.map(normalizeAIResponse).join("\n\n");
+      if (Array.isArray(item.content))
+        return item.content.map(normalizeAIResponse).join("\n\n");
+
+      // Candidates pattern
+      if (Array.isArray(item.candidates) && item.candidates.length)
+        return item.candidates.map(normalizeAIResponse).join("\n\n");
+
+      // Fallback: try to extract text-like properties, else stringify
+      const values = [];
+      ["text", "content", "output", "message", "outputText"].forEach((k) => {
+        if (item[k]) {
+          values.push(normalizeAIResponse(item[k]));
+        }
+      });
+      if (values.length) return values.join(" \n ");
+      try {
+        return JSON.stringify(item);
+      } catch {
+        return String(item);
+      }
+    }
+    return String(item);
+  };
+
+  const generateAISummary = async (research) => {
+    if (!research) return;
+    const key = import.meta.env.VITE_GEMINI_KEY;
+    if (!key) {
+      alert("Error terkait API Key. Silakan hubungi admin.");
+      return;
+    }
+
+    const abstractText = research.fullAbstract || research.abstract || "";
+    if (!abstractText) {
+      alert("Tidak ada abstrak untuk diringkas.");
+      return;
+    }
+
+    setAiSummaryLoadingId(research.id);
+    try {
+      const ai = new GoogleGenAI({ apiKey: key });
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            type: "text",
+            text: `Ringkas abstrak penelitian ini dengan bahasa yang mudah dipahami oleh masyarakat umum. Buat dalam 4-5 kalimat saja namun jangan lupa sebutkan fokus utama penelitian.\n\n${abstractText}`,
+          },
+        ],
+      });
+
+      // Normalize SDK response into a text summary using helper
+      let summaryText = "";
+      if (!response) {
+        summaryText = "(Tidak ada respons dari layanan AI)";
+      } else {
+        summaryText =
+          normalizeAIResponse(response) ||
+          "(Tidak ada respons teks dari layanan AI)";
+      }
+
+      setAiSummaries((prev) => ({ ...prev, [research.id]: summaryText }));
+      if (selectedResearch && selectedResearch.id === research.id) {
+        setSelectedResearch((prev) => ({
+          ...prev,
+          aiSummaryGenerated: true,
+          summary: summaryText,
+        }));
+      }
+    } catch (err) {
+      console.error("Error generating AI summary:", err);
+      alert("Gagal menghasilkan ringkasan AI: " + (err.message || err));
+    } finally {
+      setAiSummaryLoadingId(null);
+    }
+  };
+
+  // Open profile modal: fetch user profile and their researches
+  const openProfile = async (ownerId) => {
+    if (!ownerId) return;
+    // Reset image error so image will be retried when opening a profile
+    setProfileImageError(false);
+    setProfileLoading(true);
+    try {
+      const userRef = doc(db, "users", ownerId);
+      const userSnap = await getDoc(userRef);
+      // Properly extract data from DocumentSnapshot: use exists() and data()
+      const userData = userSnap && userSnap.exists() ? userSnap.data() : {};
+
+      // try to read researches subcollection for this user
+      let researches = [];
+      try {
+        const rCol = collection(db, "users", ownerId, "researches");
+        const rSnap = await getDocs(rCol);
+        if (!rSnap.empty) {
+          rSnap.forEach((rd) => {
+            const d = rd.data() || {};
+            researches.push({
+              id: rd.id,
+              title: d.title || d.name || d.topic || "Untitled",
+              abstract: d.abstract || d.summary || d.description || "",
+            });
+          });
+        }
+      } catch {
+        // ignore
+      }
+
+      // fallback: if no subcollection, check userData.researches
+      if (!researches.length && Array.isArray(userData.researches)) {
+        researches = userData.researches.map((r, idx) => ({
+          id: `${ownerId}_field_${idx}`,
+          title: r.title || r.name || r.topic || "Untitled",
+          abstract: r.abstract || r.summary || r.description || "",
+        }));
+      }
+
+      setProfileUser(userData || {});
+      setProfileUserResearches(researches || []);
+    } catch (err) {
+      console.error("Error loading profile:", err);
+      alert("Gagal memuat profil akademisi.");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const closeProfile = () => {
+    setProfileUser(null);
+    setProfileUserResearches([]);
+    setProfileImageError(false);
+  };
+
+  // Download PDF (from full URL or Supabase storage path)
+  const handleDownloadPDF = async (research) => {
+    if (!research) return;
+    const titleSafe = (research.title || "research").replace(
+      /[^a-z0-9\-_.]/gi,
+      "_"
+    );
+
+    // Prefer a direct URL if present
+    const pdfUrl = research.pdfUrl || "";
+    if (pdfUrl && /^https?:\/\//i.test(pdfUrl)) {
+      // Try to download by creating an anchor to support Save As
+      try {
+        const a = document.createElement("a");
+        a.href = pdfUrl;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        // Suggest filename when possible
+        a.download = `${titleSafe}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      } catch (err) {
+        alert("Gagal memulai unduhan: " + (err.message || err));
+        return;
+      }
+    }
+
+    // If no public URL, try Supabase storage path
+    const supaPath = research.supabasePath || "";
+    if (supaPath) {
+      try {
+        // If path contains a leading bucket segment 'bucket/dir/file.pdf', split it
+        let bucket = null;
+        let path = supaPath;
+        const parts = supaPath.split("/");
+        if (parts.length > 1) {
+          // assume first segment is bucket name
+          bucket = parts[0];
+          path = parts.slice(1).join("/");
+        } else {
+          // fallback to default bucket 'public'
+          bucket = "public";
+          path = supaPath;
+        }
+
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .download(path);
+        if (error || !data) {
+          throw error || new Error("No data returned from storage");
+        }
+
+        const url = URL.createObjectURL(data);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${titleSafe}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        return;
+      } catch (err) {
+        console.error("Supabase download error:", err);
+        alert("Gagal mengunduh file dari storage: " + (err.message || err));
+        return;
+      }
+    }
+
+    alert("Tidak ada file PDF tersedia untuk penelitian ini.");
   };
 
   return (
@@ -506,159 +805,411 @@ const ResearchPage = () => {
           </div>
         )}
 
-        {/* Research Feed Tab */}
-        {activeTab === "feed" && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-                <FileText className="w-12 h-12 text-green-600 mx-auto mb-3" />
-                <h3
-                  className="text-3xl font-bold text-green-600 mb-2"
-                  style={{ fontFamily: "Poppins, sans-serif" }}
-                >
-                  {researchList.length}
-                </h3>
-                <p
-                  className="text-gray-600"
-                  style={{ fontFamily: "Open Sans, sans-serif" }}
-                >
-                  Penelitian Terunggah
-                </p>
-              </div>
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-                <Users className="w-12 h-12 text-blue-600 mx-auto mb-3" />
-                <h3
-                  className="text-3xl font-bold text-blue-600 mb-2"
-                  style={{ fontFamily: "Poppins, sans-serif" }}
-                >
-                  {
-                    dummyCollaborationIKM.filter((c) => c.status === "Aktif")
-                      .length
-                  }
-                </h3>
-                <p
-                  className="text-gray-600"
-                  style={{ fontFamily: "Open Sans, sans-serif" }}
-                >
-                  Kolaborasi Aktif
-                </p>
-              </div>
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-                <TrendingUp className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
-                <h3
-                  className="text-3xl font-bold text-yellow-600 mb-2"
-                  style={{ fontFamily: "Poppins, sans-serif" }}
-                >
-                  Tekstil
-                </h3>
-                <p
-                  className="text-gray-600"
-                  style={{ fontFamily: "Open Sans, sans-serif" }}
-                >
-                  Bidang Paling Populer
-                </p>
-              </div>
-            </div>
-
-            {/* Research Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredResearch.map((research) => (
-                <div
-                  key={research.id}
-                  className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 overflow-hidden"
-                >
-                  <div className="p-6">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <span
-                        className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold"
-                        style={{ fontFamily: "Montserrat, sans-serif" }}
-                      >
-                        {research.field}
-                      </span>
-                      <span className="text-sm text-gray-500 font-semibold">
-                        {research.year}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <h3
-                      className="text-lg font-bold text-gray-800 mb-3 line-clamp-2"
-                      style={{ fontFamily: "Poppins, sans-serif" }}
-                    >
-                      {research.title}
-                    </h3>
-
-                    {/* Author */}
-                    <div className="mb-4">
-                      <p
-                        className="text-sm font-semibold text-gray-700"
-                        style={{ fontFamily: "Montserrat, sans-serif" }}
-                      >
-                        {research.author}
-                      </p>
-                      <p
-                        className="text-xs text-gray-500"
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
-                      >
-                        {research.institution}
-                      </p>
-                    </div>
-
-                    {/* Abstract or Expected Collaboration for ongoing research */}
-                    {research.status === "Sedang Berlangsung" ? (
-                      <p
-                        className="text-sm text-gray-600 mb-4 line-clamp-3"
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
-                      >
-                        <strong>Kolaborasi yang Diharapkan: </strong>
-                        {research.expectedCollab ||
-                          "Belum ada kolaborasi yang diharapkan."}
-                      </p>
-                    ) : (
-                      <p
-                        className="text-sm text-gray-600 mb-4 line-clamp-3"
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
-                      >
-                        {research.abstract}
-                      </p>
-                    )}
-
-                    {/* Status Badge */}
-                    <div className="flex items-center space-x-2 mb-4">
-                      {research.status === "Selesai" ? (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-semibold inline-flex items-center">
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Selesai
-                        </span>
+        {/* Researcher Profile Modal - Enhanced UI */}
+        {profileUser && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setProfileUser(null)}
+          >
+            <div
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header with Gradient */}
+              <div className="sticky top-0 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-start space-x-4 flex-1">
+                    {/* Profile Photo */}
+                    <div className="flex-shrink-0">
+                      {profileUser.photoUrl ? (
+                        <img
+                          src={profileUser.photoUrl}
+                          alt="Foto Profil"
+                          className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg"
+                        />
                       ) : (
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg font-semibold inline-flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          Sedang Berlangsung
-                        </span>
+                        <div className="w-24 h-24 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center text-5xl border-4 border-white shadow-lg">
+                          👨‍🔬
+                        </div>
                       )}
                     </div>
 
-                    {/* Stats */}
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                      <span>👁️ {research.views} views</span>
-                      <span>⬇️ {research.downloads} downloads</span>
-                      <span>🤝 {research.collaborations}</span>
+                    {/* Profile Info */}
+                    <div className="flex-1">
+                      <h3
+                        className="text-2xl font-bold mb-2"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
+                      >
+                        {`${
+                          profileUser.frontDegree
+                            ? profileUser.frontDegree + " "
+                            : ""
+                        }${
+                          profileUser.academicianName ||
+                          profileUser.displayName ||
+                          profileUser.name ||
+                          profileUser.fullName ||
+                          "Nama Peneliti"
+                        }${
+                          profileUser.backDegree
+                            ? ", " + profileUser.backDegree
+                            : ""
+                        }`}
+                      </h3>
+                      <div className="space-y-1 text-blue-50">
+                        <p
+                          className="flex items-center text-sm"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        >
+                          <Building2 className="w-4 h-4 mr-2" />
+                          {profileUser.institution ||
+                            profileUser.affiliation ||
+                            "Institusi"}
+                        </p>
+                        {(profileUser.department ||
+                          profileUser.departement) && (
+                          <p
+                            className="flex items-center text-sm"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            {profileUser.department || profileUser.departement}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                  </div>
 
-                    {/* Button */}
-                    <button
-                      onClick={() => setSelectedResearch(research)}
-                      className="w-full bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
-                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setProfileUser(null)}
+                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition flex-shrink-0"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Bio Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mr-3">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <h4
+                      className="text-lg font-bold text-gray-800"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      Lihat Detail
-                    </button>
+                      Bio
+                    </h4>
+                  </div>
+                  <p
+                    className="text-gray-700 leading-relaxed"
+                    style={{ fontFamily: "Open Sans, sans-serif" }}
+                  >
+                    {profileUser.bio ||
+                      profileUser.description ||
+                      profileUser.about ||
+                      "Belum ada bio yang ditambahkan."}
+                  </p>
+                </div>
+
+                {/* Research Field */}
+                <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-500 rounded-xl flex items-center justify-center mr-3">
+                      <Search className="w-5 h-5 text-white" />
+                    </div>
+                    <h4
+                      className="text-lg font-bold text-gray-800"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Bidang Riset
+                    </h4>
+                  </div>
+                  <p
+                    className="text-gray-700 font-semibold"
+                    style={{ fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    {profileUser.researchField ||
+                      profileUser.field ||
+                      profileUser.expertise ||
+                      "Belum ditentukan"}
+                  </p>
+                </div>
+
+                {/* Academic Profiles */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Google Scholar */}
+                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-5 hover:border-blue-500 hover:shadow-lg transition">
+                    <div className="flex items-center mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mr-3">
+                        <span className="text-2xl">🎓</span>
+                      </div>
+                      <h4
+                        className="font-bold text-gray-800"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
+                      >
+                        Google Scholar
+                      </h4>
+                    </div>
+                    {profileUser.googleScholar ? (
+                      <a
+                        target="_blank"
+                        rel="noreferrer"
+                        href={profileUser.googleScholar}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center hover:underline"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Lihat Profil
+                        <span className="ml-1">→</span>
+                      </a>
+                    ) : (
+                      <p
+                        className="text-sm text-gray-500"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Belum tersedia
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ResearchGate */}
+                  <div className="bg-white rounded-2xl border-2 border-gray-200 p-5 hover:border-green-500 hover:shadow-lg transition">
+                    <div className="flex items-center mb-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mr-3">
+                        <span className="text-2xl">🔬</span>
+                      </div>
+                      <h4
+                        className="font-bold text-gray-800"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
+                      >
+                        ResearchGate
+                      </h4>
+                    </div>
+                    {profileUser.researchGate ? (
+                      <a
+                        target="_blank"
+                        rel="noreferrer"
+                        href={profileUser.researchGate}
+                        className="text-green-600 hover:text-green-700 text-sm font-semibold flex items-center hover:underline"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Lihat Profil
+                        <span className="ml-1">→</span>
+                      </a>
+                    ) : (
+                      <p
+                        className="text-sm text-gray-500"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Belum tersedia
+                      </p>
+                    )}
                   </div>
                 </div>
-              ))}
+
+                {/* Research History */}
+                <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
+                  <div className="flex items-center mb-4">
+                    <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-400 rounded-xl flex items-center justify-center mr-3">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <h4
+                      className="text-lg font-bold text-gray-800"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Histori Penelitian
+                    </h4>
+                  </div>
+
+                  {profileUser.researches &&
+                  profileUser.researches.length > 0 ? (
+                    <div className="space-y-3">
+                      {profileUser.researches.map((research, idx) => (
+                        <div
+                          key={research.id || idx}
+                          className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-4 hover:shadow-md transition"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h5
+                              className="font-bold text-gray-800 flex-1"
+                              style={{ fontFamily: "Montserrat, sans-serif" }}
+                            >
+                              {research.title || "Judul Penelitian"}
+                            </h5>
+                            {research.year && (
+                              <span className="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-xs font-semibold ml-2">
+                                {research.year}
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            className="text-sm text-gray-600 leading-relaxed"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            {research.abstract
+                              ? research.abstract.length > 200
+                                ? research.abstract.slice(0, 200) + "..."
+                                : research.abstract
+                              : "Tidak ada deskripsi tersedia."}
+                          </p>
+                          {research.field && (
+                            <div className="mt-3">
+                              <span className="inline-block bg-white border border-yellow-300 text-yellow-700 px-3 py-1 rounded-lg text-xs font-semibold">
+                                {research.field}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <FileText className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p
+                        className="text-gray-500"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Belum ada histori penelitian yang dipublikasikan.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Research Feed Tab */}
+        {activeTab === "feed" && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            {/* Research Grid */}
+            {loading ? (
+              <div className="py-12 text-center text-gray-600">
+                Memuat penelitian...
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredResearch.map((research) => (
+                  <div
+                    key={research.id}
+                    className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 overflow-hidden h-full flex flex-col"
+                  >
+                    <div className="p-6 flex-1 flex flex-col">
+                      <div>
+                        <div className="flex items-start justify-between mb-4">
+                          <span
+                            className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            {research.field}
+                          </span>
+                          <span className="text-sm text-gray-500 font-semibold">
+                            {research.year}
+                          </span>
+                        </div>
+
+                        <h3
+                          className="text-lg font-bold text-gray-800 line-clamp-2 min-h-14"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          {research.title}
+                        </h3>
+
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between">
+                            <p
+                              className="text-sm font-semibold text-gray-700 h-6 overflow-hidden"
+                              style={{ fontFamily: "Montserrat, sans-serif" }}
+                            >{`${
+                              research.frontDegree
+                                ? research.frontDegree + " "
+                                : ""
+                            }${research.academicianName || ""}${
+                              research.backDegree
+                                ? ", " + research.backDegree
+                                : ""
+                            }`}</p>
+                            <button
+                              onClick={() => openProfile(research.ownerId)}
+                              className="ml-3 text-xs bg-green-100 text-green-700 px-3 py-1 rounded-lg font-semibold hover:bg-green-200"
+                              style={{ fontFamily: "Montserrat, sans-serif" }}
+                            >
+                              Lihat Profil
+                            </button>
+                          </div>
+                          <p
+                            className="text-xs text-gray-500 h-5 overflow-hidden"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            {research.institution}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 mb-4">
+                        {research.status === "ongoing" ? (
+                          <p
+                            className="text-sm text-gray-600 line-clamp-3 h-full"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            <strong>Kolaborasi yang Diharapkan: </strong>
+                            {research.collaboration ||
+                              "Belum ada kolaborasi yang diharapkan."}
+                          </p>
+                        ) : (
+                          <p
+                            className="text-sm text-gray-600 line-clamp-3 h-full"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            <strong>Rencana Ke Depan: </strong>
+                            {research.futureplan ||
+                              "Belum ada rencana ke depan."}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center space-x-2 mb-4">
+                          {research.status === "completed" ? (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg font-semibold inline-flex items-center">
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Selesai
+                            </span>
+                          ) : (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg font-semibold inline-flex items-center">
+                              <Clock className="w-4 h-4 mr-1" />
+                              Sedang Berlangsung
+                            </span>
+                          )}
+                        </div>
+
+                        {/* <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                          <span>👁️ {research.views} views</span>
+                          <span>⬇️ {research.downloads} downloads</span>
+                          <span>🤝 {research.collaborations}</span>
+                        </div> */}
+
+                        <div>
+                          <button
+                            onClick={() => setSelectedResearch(research)}
+                            className="w-full bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Lihat Detail
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {/* Research Detail Modal */}
@@ -682,7 +1233,22 @@ const ResearchPage = () => {
                       {selectedResearch.title}
                     </h2>
                     <div className="flex flex-wrap items-center gap-3 text-sm text-green-50">
-                      <span>👤 {selectedResearch.author}</span>
+                      <span>
+                        👤{" "}
+                        {`${
+                          selectedResearch.frontDegree
+                            ? selectedResearch.frontDegree + " "
+                            : ""
+                        }${
+                          selectedResearch.academicianName ||
+                          selectedResearch.author ||
+                          ""
+                        }${
+                          selectedResearch.backDegree
+                            ? ", " + selectedResearch.backDegree
+                            : ""
+                        }`}
+                      </span>
                       <span>🏛️ {selectedResearch.institution}</span>
                       <span>📅 {selectedResearch.year}</span>
                     </div>
@@ -700,7 +1266,7 @@ const ResearchPage = () => {
               <div className="p-6 space-y-6">
                 {/* Quick Info */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-green-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
+                  {/* <div className="bg-green-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
                     <p
                       className="text-xl font-bold text-green-600 leading-tight"
                       style={{ fontFamily: "Poppins, sans-serif" }}
@@ -713,8 +1279,8 @@ const ResearchPage = () => {
                     >
                       Views
                     </p>
-                  </div>
-                  <div className="bg-blue-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
+                  </div> */}
+                  {/* <div className="bg-blue-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
                     <p
                       className="text-xl font-bold text-blue-600 leading-tight"
                       style={{ fontFamily: "Poppins, sans-serif" }}
@@ -727,17 +1293,17 @@ const ResearchPage = () => {
                     >
                       Downloads
                     </p>
-                  </div>
+                  </div> */}
                   <div
                     className={`rounded-xl p-4 text-center flex flex-col items-center justify-center ${
-                      selectedResearch.status === "Selesai"
+                      selectedResearch.status === "completed"
                         ? "bg-green-50"
                         : "bg-yellow-50"
                     }`}
                   >
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded-lg font-semibold text-xs mt-1 mb-1 ${
-                        selectedResearch.status === "Selesai"
+                        selectedResearch.status === "completed"
                           ? "bg-green-100 text-green-700"
                           : "bg-yellow-100 text-yellow-700"
                       }`}
@@ -749,12 +1315,19 @@ const ResearchPage = () => {
                         textAlign: "center",
                       }}
                     >
-                      {selectedResearch.status === "Selesai" ? (
+                      {selectedResearch.status === "completed" ? (
                         <CheckCircle className="w-4 h-4 mr-1" />
                       ) : (
                         <Clock className="w-4 h-4 mr-1" />
                       )}
-                      <span>{selectedResearch.status}</span>
+                      <span>
+                        {" "}
+                        {selectedResearch.status === "completed" ? (
+                          <p className="text-lg">Selesai</p>
+                        ) : (
+                          <p className="text-md">Sedang Berlangsung</p>
+                        )}
+                      </span>
                     </span>
                     <p
                       className="text-xs text-gray-600"
@@ -763,7 +1336,7 @@ const ResearchPage = () => {
                       Status
                     </p>
                   </div>
-                  <div className="bg-purple-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
+                  {/* <div className="bg-purple-50 rounded-xl p-4 text-center flex flex-col items-center justify-center">
                     <p
                       className="text-xl font-bold text-purple-600 leading-tight"
                       style={{ fontFamily: "Poppins, sans-serif" }}
@@ -776,7 +1349,7 @@ const ResearchPage = () => {
                     >
                       Kolaborasi
                     </p>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Tags */}
@@ -785,7 +1358,11 @@ const ResearchPage = () => {
                     {selectedResearch.field}
                   </span>
                   <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
-                    {selectedResearch.status}
+                    {selectedResearch.status === "completed" ? (
+                      <p>Selesai</p>
+                    ) : (
+                      <p>Sedang Berlangsung</p>
+                    )}
                   </span>
                   {selectedResearch.keywords.map((keyword, idx) => (
                     <span
@@ -809,7 +1386,7 @@ const ResearchPage = () => {
                     className="text-gray-700 leading-relaxed"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {selectedResearch.fullAbstract}
+                    {selectedResearch.abstract}
                   </p>
                 </div>
 
@@ -822,33 +1399,33 @@ const ResearchPage = () => {
                     >
                       <span className="mr-2">🤖</span> Ringkasan AI
                     </h3>
-                    {!selectedResearch.aiSummaryGenerated && (
+                    {!aiSummaries[selectedResearch.id] && (
                       <button
-                        onClick={generateAISummary}
-                        disabled={aiSummaryLoading}
+                        onClick={() => generateAISummary(selectedResearch)}
+                        disabled={aiSummaryLoadingId === selectedResearch.id}
                         className={`px-4 py-2 rounded-xl font-semibold transition ${
-                          aiSummaryLoading
+                          aiSummaryLoadingId === selectedResearch.id
                             ? "bg-gray-300 text-gray-500 cursor-wait"
                             : "bg-purple-600 text-white hover:bg-purple-700"
                         }`}
                         style={{ fontFamily: "Montserrat, sans-serif" }}
                       >
-                        {aiSummaryLoading
+                        {aiSummaryLoadingId === selectedResearch.id
                           ? "Menghasilkan..."
-                          : "Generate Ringkasan"}
+                          : "Tampilkan Ringkasan AI"}
                       </button>
                     )}
                   </div>
-                  {/* AI Summarizer Integration Placeholder: Connect to AI API for automatic summarization */}
-                  {selectedResearch.aiSummaryGenerated ? (
+                  {/* AI Summarizer Integration: show per-research summary if available */}
+                  {aiSummaries[selectedResearch.id] ? (
                     <div className="bg-white rounded-xl p-4">
                       <p
                         className="text-gray-700 leading-relaxed"
                         style={{ fontFamily: "Open Sans, sans-serif" }}
                       >
-                        <strong>Ringkasan Mudah Dipahami:</strong>
+                        <strong>Ringkasan:</strong>
                         <br />
-                        {selectedResearch.summary}
+                        {aiSummaries[selectedResearch.id]}
                       </p>
                     </div>
                   ) : (
@@ -856,76 +1433,84 @@ const ResearchPage = () => {
                       className="text-gray-600 italic"
                       style={{ fontFamily: "Open Sans, sans-serif" }}
                     >
-                      Klik tombol "Generate Ringkasan" untuk mendapatkan
+                      Klik tombol "Tampilkan Ringkasan AI" untuk mendapatkan
                       ringkasan otomatis dari AI yang mudah dipahami
                     </p>
                   )}
                 </div>
 
                 {/* Action Buttons */}
-                {/* Top: full-width Download button */}
-                <div className="mb-4">
-                  <button
-                    onClick={() => {
-                      /* TODO: implement download action */
-                    }}
-                    className="w-full bg-linear-to-r from-blue-600 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    <FileText className="w-5 h-5" />
-                    <span>Unduh PDF</span>
-                  </button>
-                </div>
-
-                {/* Bottom: two buttons - Chat (left) and Email (right) */}
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => {
-                      /* TODO: implement chat action */
-                    }}
-                    className="bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="w-6 h-6"
-                      aria-hidden="true"
+                <div className="mb-4 space-y-3">
+                  {/* Row 1: Chat + Email */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        const raw = selectedResearch?.phone || "";
+                        const formatted = formatPhoneForWa(raw);
+                        if (!formatted) {
+                          alert(
+                            "Nomor telepon tidak tersedia untuk akademisi ini."
+                          );
+                          return;
+                        }
+                        window.open(`https://wa.me/${formatted}`, "_blank");
+                      }}
+                      className="w-full bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.37 0 .02 5.36.02 12a11.3 11.3 0 001.59 5.6L0 24l6.7-1.74A11.94 11.94 0 0012 24c6.63 0 12-5.36 12-12 0-3.2-1.25-6.2-3.48-8.52zM12 21.5c-1.2 0-2.38-.32-3.42-.93l-.24-.14-3.98 1.02 1.06-3.88-.15-.25A9.5 9.5 0 012.5 12 9.5 9.5 0 0112 2.5c5.24 0 9.5 4.26 9.5 9.5S17.24 21.5 12 21.5z" />
-                      <path d="M17.6 14.2c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15s-.78.98-.96 1.18c-.18.2-.36.22-.66.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2 0-.38-.05-.53-.06-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52l-.58-.01c-.2 0-.53.07-.8.35s-1.05 1.03-1.05 2.5 1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54 3.02 1.3 3.02.87 3.57.82.55-.05 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.58-.35z" />
-                    </svg>
-                    <span>Chat Akademisi</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      /* TODO: implement email action */
-                    }}
-                    className="bg-linear-to-r from-indigo-600 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    <Mail className="w-5 h-5" />
-                    <span>Email Akademisi</span>
-                  </button>
-                </div>
-
-                {/* Comments Section (Placeholder) */}
-                <div className="border-t border-gray-200 pt-6">
-                  <h3
-                    className="text-xl font-bold text-gray-800 mb-4"
-                    style={{ fontFamily: "Poppins, sans-serif" }}
-                  >
-                    Diskusi & Komentar
-                  </h3>
-                  <div className="bg-gray-50 rounded-xl p-6 text-center">
-                    <p
-                      className="text-gray-500"
-                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        className="w-6 h-6"
+                        aria-hidden="true"
+                      >
+                        <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.37 0 .02 5.36.02 12a11.3 11.3 0 001.59 5.6L0 24l6.7-1.74A11.94 11.94 0 0012 24c6.63 0 12-5.36 12-12 0-3.2-1.25-6.2-3.48-8.52zM12 21.5c-1.2 0-2.38-.32-3.42-.93l-.24-.14-3.98 1.02 1.06-3.88-.15-.25A9.5 9.5 0 012.5 12 9.5 9.5 0 0112 2.5c5.24 0 9.5 4.26 9.5 9.5S17.24 21.5 12 21.5z" />
+                        <path d="M17.6 14.2c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15s-.78.98-.96 1.18c-.18.2-.36.22-.66.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2 0-.38-.05-.53-.06-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52l-.58-.01c-.2 0-.53.07-.8.35s-1.05 1.03-1.05 2.5 1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54 3.02 1.3 3.02.87 3.57.82.55-.05 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.58-.35z" />
+                      </svg>
+                      <span>Chat Akademisi</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const email = selectedResearch?.email || "";
+                        if (!email) {
+                          alert("Email tidak tersedia untuk akademisi ini.");
+                          return;
+                        }
+                        const subject = encodeURIComponent(
+                          `Pertanyaan tentang penelitian: ${
+                            selectedResearch?.title || ""
+                          }`
+                        );
+                        const body = encodeURIComponent(
+                          `Yth. ${selectedResearch?.frontDegree} ${
+                            selectedResearch?.academicianName
+                          }, ${
+                            selectedResearch?.backDegree
+                          },\n\nSaya tertarik dengan penelitian Anda yang berjudul "${
+                            selectedResearch?.title || ""
+                          }". Mohon informasi lebih lanjut mengenai ...\n\nTerima kasih.`
+                        );
+                        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+                      }}
+                      className="w-full bg-linear-to-r from-blue-600 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      Fitur diskusi akan segera tersedia. Anda dapat bertanya
-                      dan berdiskusi langsung dengan peneliti.
-                    </p>
+                      <Mail className="w-5 h-5" />
+                      <span>Email Akademisi</span>
+                    </button>
+                  </div>
+
+                  {/* Row 2: Full-width Download */}
+                  <div>
+                    <button
+                      onClick={() => handleDownloadPDF(selectedResearch)}
+                      className="w-full bg-linear-to-r from-indigo-600 to-indigo-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition flex items-center justify-center space-x-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      <Download className="w-5 h-5" />
+                      <span>Unduh PDF</span>
+                    </button>
                   </div>
                 </div>
               </div>

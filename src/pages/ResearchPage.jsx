@@ -449,7 +449,7 @@ const ResearchPage = () => {
 
   const generateAISummary = async (research) => {
     if (!research) return;
-    const key = import.meta.env.VITE_GEMINI_KEY;
+    const key = import.meta.env.VITE_GEMINI_API_KEY;
     if (!key) {
       alert("Error terkait API Key. Silakan hubungi admin.");
       return;
@@ -541,7 +541,12 @@ const ResearchPage = () => {
         }));
       }
 
-      setProfileUser(userData || {});
+      // Ensure a default profile photo emoji for academicians without uploads
+      const normalizedUser = userData || {};
+      if (!normalizedUser.photo && !normalizedUser.photoUrl) {
+        normalizedUser.photo = "👨‍🔬";
+      }
+      setProfileUser(normalizedUser);
       setProfileUserResearches(researches || []);
     } catch (err) {
       console.error("Error loading profile:", err);

@@ -110,6 +110,35 @@ const RegisterPage = () => {
     setError("");
     setIsLoading(true);
 
+    // Validate email
+    if (!formData.email || formData.email.trim() === "") {
+      setError("Email wajib diisi!");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError("Format email tidak valid!");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password exists
+    if (!formData.password || formData.password.trim() === "") {
+      setError("Password wajib diisi!");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password length (Firebase minimum 6 characters)
+    if (formData.password.length < 6) {
+      setError("Password minimal harus 6 karakter!");
+      setIsLoading(false);
+      return;
+    }
+
     // Validate password match
     if (formData.password !== formData.confirmPassword) {
       setError("Password tidak cocok!");
@@ -124,11 +153,18 @@ const RegisterPage = () => {
       return;
     }
 
+    // Validate role selection
+    if (!selectedRole) {
+      setError("Silakan pilih peran terlebih dahulu!");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Create auth user
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        formData.email,
+        formData.email.trim(),
         formData.password
       );
 
@@ -174,7 +210,7 @@ const RegisterPage = () => {
   return (
     <div>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-50 py-12 px-4">
+      <div className="min-h-screen bg-linear-to-br from-green-50 via-blue-50 to-green-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
@@ -265,7 +301,7 @@ const RegisterPage = () => {
                   >
                     <div className="flex items-start space-x-4">
                       <div
-                        className={`w-14 h-14 bg-gradient-to-br ${role.gradient} rounded-xl flex items-center justify-center text-white flex-shrink-0`}
+                        className={`w-14 h-14 bg-linear-to-br ${role.gradient} rounded-xl flex items-center justify-center text-white shrink-0`}
                       >
                         {role.icon}
                       </div>

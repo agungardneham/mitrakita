@@ -11,6 +11,8 @@ import IKMDashboard from "./pages/IKMDashboard";
 import AcademicianDashboard from "./pages/AcademicianDashboard";
 import UserDashboard from "./pages/UserDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
+import UserDirectoryPage from "./pages/UserDirectoryPage";
+import { User } from "lucide-react";
 
 function App() {
   return (
@@ -52,6 +54,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["user"]}>
                 <UserDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/industri"
+            element={
+              <ProtectedRoute>
+                <UserDirectoryPage />
               </ProtectedRoute>
             }
           />

@@ -79,6 +79,15 @@ const Navbar = ({ onNavigate }) => {
                 Penelitian
               </Link>
             )}
+            {isLoggedIn && (
+              <Link
+                to="/industri"
+                className="text-gray-700 hover:text-green-600 transition font-medium"
+                style={{ fontFamily: "Montserrat, sans-serif" }}
+              >
+                Direktori Industri
+              </Link>
+            )}
             <Link
               to="/about"
               className="text-gray-700 hover:text-green-600 transition font-medium"
@@ -162,6 +171,15 @@ const Navbar = ({ onNavigate }) => {
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
               >
                 Penelitian
+              </Link>
+            )}
+            {isLoggedIn && (
+              <Link
+                to="/industri"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
+              >
+                Direktori Industri
               </Link>
             )}
             <Link

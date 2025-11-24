@@ -187,72 +187,26 @@ const IKMDashboard = () => {
 
   // Profile Data State
   const [profileData, setProfileData] = useState({
-    businessName: "CV Furniture Jaya Abadi",
-    businessType: "Furniture & Kerajinan",
-    officeAddress: "Jl. Raya Tahunan No. 45, Jepara",
-    factoryAddress: "Kawasan Industri Jepara Blok A-12",
-    nib: "1234567890123",
+    businessName: "",
+    businessType: "",
+    officeAddress: "",
+    factoryAddress: "",
+    nib: "",
     phone: "",
     kbli: "",
-    logo: "🪑",
-    logoUrl: null,
-    establishedYear: 2008,
-    employees: 45,
-    partnerships: 28,
-    certifications: [
-      { name: "SNI", year: 2020, validity: 3 },
-      { name: "SVLK", year: 2021, validity: 5 },
-    ],
-    bio: "Produsen furniture berkualitas tinggi dengan pengalaman lebih dari 15 tahun. Menggunakan kayu jati pilihan dan craftmanship terbaik.",
-    website: "www.furniturejaya.com",
-    academicPartnerships: [
-      {
-        academicName: "Dr. Budi Santoso",
-        institution: "ITB",
-        year: 2023,
-        topic: "Optimalisasi UV Coating",
-        period: "6 bulan",
-      },
-      {
-        academicName: "Prof. Siti Nurhaliza",
-        institution: "UGM",
-        year: 2022,
-        topic: "Sustainable Wood Treatment",
-        period: "1 tahun",
-      },
-    ],
+    logo: "🏭",
+    logoUrl: "",
+    establishedYear: "-",
+    employees: "-",
+    partnerships: [],
+    certifications: [],
+    bio: "-",
+    website: "-",
+    academicPartnerships: [],
     companyPartnerships: [],
-    machines: [
-      {
-        name: "CNC Router Machine",
-        image: "⚙️",
-        description: "Mesin CNC untuk cutting dan carving presisi tinggi",
-        specifications: "Working area: 2000x3000mm, Spindle power: 6kW",
-        quantity: 2,
-        capacity: "50 panel/hari per unit",
-        certifications: [],
-      },
-    ],
-    products: [
-      {
-        name: "Kursi Jati Minimalis",
-        imageUrl: null,
-        description: "Kursi kayu jati solid dengan desain minimalis modern",
-        specifications: "Dimensi: 50x50x90cm, Material: Kayu Jati Grade A",
-        capacity: "100 unit/bulan",
-        certifications: ["SNI"],
-        machinesUsed: [],
-      },
-    ],
-    services: [
-      {
-        name: "Custom Furniture Design",
-        imageUrl: null,
-        specifications: "Lead time: 2-4 minggu, Min. order: 10 unit",
-        capacity: "50 desain/bulan",
-        machinesUsed: [],
-      },
-    ],
+    machines: [],
+    products: [],
+    services: [],
   });
 
   // Save profile to Firestore
@@ -582,11 +536,11 @@ const IKMDashboard = () => {
       label: "Kemitraan",
       icon: <Users className="w-5 h-5" />,
     },
-    {
-      id: "ratings",
-      label: "Rating & Ulasan",
-      icon: <Star className="w-5 h-5" />,
-    },
+    // {
+    //   id: "ratings",
+    //   label: "Rating & Ulasan",
+    //   icon: <Star className="w-5 h-5" />,
+    // },
   ];
 
   const handleProfileUpdate = (field, value) => {
@@ -601,11 +555,21 @@ const IKMDashboard = () => {
         <div className="w-64 bg-white shadow-lg hidden md:block">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-2">
-              <img
-                src={profileData.logoUrl}
-                alt="Logo IKM"
-                className="w-12 h-12 object-cover rounded-xl"
-              />
+              <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center bg-white">
+                {profileData?.logoUrl ? (
+                  <img
+                    src={profileData.logoUrl}
+                    alt="Logo IKM"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // If image fails to load, fall back to emoji
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span className="text-2xl">{profileData?.logo || "🏭"}</span>
+                )}
+              </div>
               <div>
                 <h2
                   className="text-lg font-bold text-gray-800"
@@ -1845,7 +1809,7 @@ const IKMDashboard = () => {
                   </h3>
                   <p className="text-gray-600 text-sm">Layanan Aktif</p>
                 </div>
-                <div className="bg-white rounded-2xl shadow-lg p-6">
+                {/* <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Star className="w-8 h-8 text-yellow-500" />
                     <span className="text-green-600 text-sm font-semibold">
@@ -1854,7 +1818,7 @@ const IKMDashboard = () => {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800 mb-1">4.8</h3>
                   <p className="text-gray-600 text-sm">Rating Rata-rata</p>
-                </div>
+                </div> */}
               </div>
 
               {/* Quick Actions */}

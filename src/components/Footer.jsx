@@ -39,9 +39,6 @@ const Footer = () => {
                 <Link to="/direktori">Direktori IKM</Link>
               </li>
               <li className="hover:text-green-400 transition">
-                <Link to="/penelitian">Penelitian</Link>
-              </li>
-              <li className="hover:text-green-400 transition">
                 <Link to="/about">Tentang Kami</Link>
               </li>
             </ul>

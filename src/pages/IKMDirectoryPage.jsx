@@ -21,10 +21,22 @@ import {
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useAuth } from "../context/AuthContext";
 import db from "../firebase-config";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+} from "firebase/firestore";
 
 const IKMDirectoryPage = () => {
+  // State declarations
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedKbli, setSelectedKbli] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -37,6 +49,32 @@ const IKMDirectoryPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+  const [favoriteCounts, setFavoriteCounts] = useState({});
+
+  const { role, isLoggedIn, user } = useAuth();
+
+  // Fetch favorite counts for all IKM
+  useEffect(() => {
+    const fetchFavoriteCounts = async () => {
+      try {
+        const q = query(collection(db, "users"));
+        const querySnapshot = await getDocs(q);
+        const counts = {};
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (Array.isArray(data.favoritedIkm)) {
+            data.favoritedIkm.forEach((ikmId) => {
+              counts[ikmId] = (counts[ikmId] || 0) + 1;
+            });
+          }
+        });
+        setFavoriteCounts(counts);
+      } catch (err) {
+        console.error("Error fetching favorite counts:", err);
+      }
+    };
+    fetchFavoriteCounts();
+  }, [ikmList]);
 
   // Derived flags to decide which labels to show in "Jenis Layanan"
   const hasProducts = (() => {
@@ -173,6 +211,104 @@ const IKMDirectoryPage = () => {
     return <span>{String(v)}</span>;
   };
 
+  const toggleFavorite = async (id) => {
+    if (!isLoggedIn || !(role === "user" || role === "academician")) {
+      window.alert(
+        "Silakan login sebagai User atau Akademisi untuk menandai favorit."
+      );
+      return;
+    }
+
+    // Optimistic UI update
+    const prevIkmList = ikmList;
+    const updated = ikmList.map((ikm) =>
+      ikm.id === id ? { ...ikm, favorited: !ikm.favorited } : ikm
+    );
+    setIkmList(updated);
+    setFilteredIkm(
+      updated.filter((ikm) => {
+        let matches = true;
+        if (searchQuery)
+          matches =
+            matches &&
+            (ikm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (Array.isArray(ikm.products) &&
+                ikm.products.some((p) =>
+                  typeof p === "string"
+                    ? p.toLowerCase().includes(searchQuery.toLowerCase())
+                    : p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                )));
+        if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
+        if (selectedLocation && selectedLocation !== "Semua")
+          matches = matches && ikm.location.includes(selectedLocation);
+        if (selectedServiceType && selectedServiceType !== "Semua")
+          matches = matches && ikm.serviceType.includes(selectedServiceType);
+        if (selectedCertification && selectedCertification !== "Semua")
+          matches =
+            matches &&
+            (Array.isArray(ikm.certifications)
+              ? ikm.certifications.some((c) =>
+                  typeof c === "string"
+                    ? c === selectedCertification
+                    : c.name === selectedCertification
+                )
+              : false);
+        if (minRating > 0) matches = matches && ikm.rating >= minRating;
+        return matches;
+      })
+    );
+
+    // Update Firestore: add or remove from users/{uid}.favoritedIkm
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const isNowFavorited = updated.find((i) => i.id === id)?.favorited;
+      if (isNowFavorited) {
+        await updateDoc(userRef, { favoritedIkm: arrayUnion(id) });
+      } else {
+        await updateDoc(userRef, { favoritedIkm: arrayRemove(id) });
+      }
+    } catch (error) {
+      console.error("Error updating favorited IKM:", error);
+      window.alert("Gagal menyimpan favorit. Silakan coba lagi.");
+      // revert UI on error
+      setIkmList(prevIkmList);
+      setFilteredIkm(
+        prevIkmList.filter((ikm) => {
+          let matches = true;
+          if (searchQuery)
+            matches =
+              matches &&
+              (ikm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (Array.isArray(ikm.products) &&
+                  ikm.products.some((p) =>
+                    typeof p === "string"
+                      ? p.toLowerCase().includes(searchQuery.toLowerCase())
+                      : p.name
+                          ?.toLowerCase()
+                          .includes(searchQuery.toLowerCase())
+                  )));
+          if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
+          if (selectedLocation && selectedLocation !== "Semua")
+            matches = matches && ikm.location.includes(selectedLocation);
+          if (selectedServiceType && selectedServiceType !== "Semua")
+            matches = matches && ikm.serviceType.includes(selectedServiceType);
+          if (selectedCertification && selectedCertification !== "Semua")
+            matches =
+              matches &&
+              (Array.isArray(ikm.certifications)
+                ? ikm.certifications.some((c) =>
+                    typeof c === "string"
+                      ? c === selectedCertification
+                      : c.name === selectedCertification
+                  )
+                : false);
+          if (minRating > 0) matches = matches && ikm.rating >= minRating;
+          return matches;
+        })
+      );
+    }
+  };
+
   // Firestore fetch logic
   useEffect(() => {
     const fetchIKMProfiles = async () => {
@@ -191,6 +327,86 @@ const IKMDirectoryPage = () => {
     };
     fetchIKMProfiles();
   }, []);
+
+  // Sync favorites from Firestore for the logged-in user so UI reflects stored favorites
+  useEffect(() => {
+    const syncFavorites = async () => {
+      if (!ikmList || ikmList.length === 0) return;
+
+      // If user not logged in, clear local favorited flags
+      if (!user || !isLoggedIn) {
+        const anyFav = ikmList.some((i) => i.favorited);
+        if (anyFav) {
+          const cleared = ikmList.map((i) => ({ ...i, favorited: false }));
+          setIkmList(cleared);
+          setFilteredIkm(cleared);
+        }
+        return;
+      }
+
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        const data = userSnap.exists() ? userSnap.data() : {};
+        const fav = Array.isArray(data.favoritedIkm) ? data.favoritedIkm : [];
+
+        const updated = ikmList.map((ikm) => ({
+          ...ikm,
+          favorited: fav.includes(ikm.id),
+        }));
+        setIkmList(updated);
+
+        // Recompute filtered list according to current filters
+        const recomputed = updated.filter((ikm) => {
+          let matches = true;
+          if (searchQuery)
+            matches =
+              matches &&
+              (ikm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (Array.isArray(ikm.products) &&
+                  ikm.products.some((p) =>
+                    typeof p === "string"
+                      ? p.toLowerCase().includes(searchQuery.toLowerCase())
+                      : p.name
+                          ?.toLowerCase()
+                          .includes(searchQuery.toLowerCase())
+                  )));
+          if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
+          if (selectedLocation && selectedLocation !== "Semua")
+            matches = matches && ikm.location.includes(selectedLocation);
+          if (selectedServiceType && selectedServiceType !== "Semua")
+            matches = matches && ikm.serviceType.includes(selectedServiceType);
+          if (selectedCertification && selectedCertification !== "Semua")
+            matches =
+              matches &&
+              (Array.isArray(ikm.certifications)
+                ? ikm.certifications.some((c) =>
+                    typeof c === "string"
+                      ? c === selectedCertification
+                      : c.name === selectedCertification
+                  )
+                : false);
+          if (minRating > 0) matches = matches && ikm.rating >= minRating;
+          return matches;
+        });
+        setFilteredIkm(recomputed);
+      } catch (err) {
+        console.error("Error syncing favorited IKM:", err);
+      }
+    };
+
+    syncFavorites();
+  }, [
+    user,
+    isLoggedIn,
+    ikmList,
+    searchQuery,
+    selectedKbli,
+    selectedLocation,
+    selectedServiceType,
+    selectedCertification,
+    minRating,
+  ]);
 
   const kbliOptions = [
     { label: "Semua", value: "" },
@@ -284,46 +500,6 @@ const IKMDirectoryPage = () => {
     setFilteredIkm(ikmList);
     setCurrentPage(1);
   };
-
-  const toggleFavorite = (id) => {
-    const updated = ikmList.map((ikm) =>
-      ikm.id === id ? { ...ikm, favorited: !ikm.favorited } : ikm
-    );
-    setIkmList(updated);
-    setFilteredIkm(
-      updated.filter((ikm) => {
-        let matches = true;
-        if (searchQuery)
-          matches =
-            matches &&
-            (ikm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (Array.isArray(ikm.products) &&
-                ikm.products.some((p) =>
-                  typeof p === "string"
-                    ? p.toLowerCase().includes(searchQuery.toLowerCase())
-                    : p.name?.toLowerCase().includes(searchQuery.toLowerCase())
-                )));
-        if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
-        if (selectedLocation && selectedLocation !== "Semua")
-          matches = matches && ikm.location.includes(selectedLocation);
-        if (selectedServiceType && selectedServiceType !== "Semua")
-          matches = matches && ikm.serviceType.includes(selectedServiceType);
-        if (selectedCertification && selectedCertification !== "Semua")
-          matches =
-            matches &&
-            (Array.isArray(ikm.certifications)
-              ? ikm.certifications.some((c) =>
-                  typeof c === "string"
-                    ? c === selectedCertification
-                    : c.name === selectedCertification
-                )
-              : false);
-        if (minRating > 0) matches = matches && ikm.rating >= minRating;
-        return matches;
-      })
-    );
-  };
-
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -568,23 +744,29 @@ const IKMDirectoryPage = () => {
                         ) : ikm.logo ? (
                           <span>{ikm.logo}</span>
                         ) : (
-                          <span className="font-bold text-white">
-                            {ikm.name
-                              ? ikm.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .slice(0, 2)
-                                  .join("")
-                              : "👨‍💼"}
-                          </span>
+                          <span>🏭</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => toggleFavorite(ikm.id)}
-                        className="text-2xl transition-transform hover:scale-110"
-                      >
-                        {ikm.favorited ? "❤️" : "🤍"}
-                      </button>
+                      {isLoggedIn &&
+                      (role === "user" || role === "academician") ? (
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => toggleFavorite(ikm.id)}
+                            className="text-2xl transition-transform hover:scale-110"
+                            aria-label={
+                              ikm.favorited ? "Unfavorite" : "Favorite"
+                            }
+                          >
+                            {ikm.favorited ? "❤️" : "🤍"}
+                          </button>
+                          <span
+                            className="text-sm font-semibold text-gray-600"
+                            title="Jumlah favorit"
+                          >
+                            {favoriteCounts[ikm.id] || 0}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
 
                     <h3
@@ -602,7 +784,7 @@ const IKMDirectoryPage = () => {
                       {ikm.officeAddress}
                     </div>
 
-                    <div className="flex items-center mb-4">
+                    {/* <div className="flex items-center mb-4">
                       <div className="flex items-center">
                         {[...Array(5)].map((_, i) => (
                           <Star
@@ -621,7 +803,7 @@ const IKMDirectoryPage = () => {
                       >
                         {ikm.rating} ({ikm.reviewCount} ulasan)
                       </span>
-                    </div>
+                    </div> */}
 
                     <div className="mb-4">
                       <span
@@ -831,15 +1013,7 @@ const IKMDirectoryPage = () => {
                       ) : selectedIkm.logo ? (
                         <span>{selectedIkm.logo}</span>
                       ) : (
-                        <span className="font-bold text-green-600">
-                          {selectedIkm.businessName
-                            ? selectedIkm.businessName
-                                .split(" ")
-                                .map((n) => n[0])
-                                .slice(0, 2)
-                                .join("")
-                            : ""}
-                        </span>
+                        <span>🏭</span>
                       )}
                     </div>
                     <div>
@@ -850,15 +1024,19 @@ const IKMDirectoryPage = () => {
                         {selectedIkm.businessName}
                       </h2>
                       <div className="flex items-center space-x-4 text-green-50">
-                        <span className="flex items-center">
-                          <span className="mr-1">📍</span>
-                          {selectedIkm.officeAddress}
-                        </span>
-                        <span className="flex items-center">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
-                          {selectedIkm.rating} ({selectedIkm.reviewCount}{" "}
-                          ulasan)
-                        </span>
+                        {selectedIkm?.officeAddress && (
+                          <span className="flex items-center">
+                            <span className="mr-1">📍</span>
+                            {selectedIkm.officeAddress}
+                          </span>
+                        )}
+                        {/* {selectedIkm?.rating && (
+                          <span className="flex items-center">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                            {selectedIkm.rating} (
+                            {selectedIkm?.reviewCount || 0} ulasan)
+                          </span>
+                        )} */}
                       </div>
                     </div>
                   </div>
@@ -880,7 +1058,7 @@ const IKMDirectoryPage = () => {
                       className="text-2xl font-bold text-green-600"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      {selectedIkm.establishedYear}
+                      {selectedIkm?.establishedYear || "-"}
                     </p>
                     <p
                       className="text-sm text-gray-600"
@@ -894,7 +1072,7 @@ const IKMDirectoryPage = () => {
                       className="text-2xl font-bold text-blue-600"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      {selectedIkm.employees}
+                      {selectedIkm?.employees || "-"}
                     </p>
                     <p
                       className="text-sm text-gray-600"
@@ -908,7 +1086,7 @@ const IKMDirectoryPage = () => {
                       className="text-2xl font-bold text-yellow-600"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      {selectedIkm.partnerships}
+                      {selectedIkm?.partnerships || 0}
                     </p>
                     <p
                       className="text-sm text-gray-600"
@@ -922,7 +1100,9 @@ const IKMDirectoryPage = () => {
                       className="text-2xl font-bold text-purple-600"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      {selectedIkm.certifications.length}
+                      {Array.isArray(selectedIkm?.certifications)
+                        ? selectedIkm.certifications.length
+                        : 0}
                     </p>
                     <p
                       className="text-sm text-gray-600"
@@ -945,7 +1125,8 @@ const IKMDirectoryPage = () => {
                     className="text-gray-700 leading-relaxed"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {selectedIkm.bio}
+                    {selectedIkm?.bio ||
+                      "Informasi tentang perusahaan tidak tersedia"}
                   </p>
                 </div>
 
@@ -971,7 +1152,8 @@ const IKMDirectoryPage = () => {
                           className="text-gray-600"
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                         >
-                          {selectedIkm.officeAddress}
+                          {selectedIkm?.officeAddress ||
+                            "Alamat tidak tersedia"}
                         </p>
                       </div>
                     </div>
@@ -984,13 +1166,22 @@ const IKMDirectoryPage = () => {
                         >
                           Email
                         </p>
-                        <a
-                          href={`mailto:${selectedIkm.email}`}
-                          className="text-green-600 hover:underline"
-                          style={{ fontFamily: "Open Sans, sans-serif" }}
-                        >
-                          {selectedIkm.email}
-                        </a>
+                        {selectedIkm?.email ? (
+                          <a
+                            href={`mailto:${selectedIkm.email}`}
+                            className="text-green-600 hover:underline"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            {selectedIkm.email}
+                          </a>
+                        ) : (
+                          <span
+                            className="text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Email tidak tersedia
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center">
@@ -1002,13 +1193,22 @@ const IKMDirectoryPage = () => {
                         >
                           Telepon
                         </p>
-                        <a
-                          href={`tel:${selectedIkm.phone}`}
-                          className="text-green-600 hover:underline"
-                          style={{ fontFamily: "Open Sans, sans-serif" }}
-                        >
-                          {selectedIkm.phone}
-                        </a>
+                        {selectedIkm?.phone ? (
+                          <a
+                            href={`tel:${selectedIkm.phone}`}
+                            className="text-green-600 hover:underline"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            {selectedIkm.phone}
+                          </a>
+                        ) : (
+                          <span
+                            className="text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Telepon tidak tersedia
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center">
@@ -1020,15 +1220,24 @@ const IKMDirectoryPage = () => {
                         >
                           Website
                         </p>
-                        <a
-                          href={`https://${selectedIkm.website}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-green-600 hover:underline"
-                          style={{ fontFamily: "Open Sans, sans-serif" }}
-                        >
-                          {selectedIkm.website}
-                        </a>
+                        {selectedIkm?.website ? (
+                          <a
+                            href={`https://${selectedIkm.website}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-green-600 hover:underline"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            {selectedIkm.website}
+                          </a>
+                        ) : (
+                          <span
+                            className="text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Website tidak tersedia
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1047,7 +1256,7 @@ const IKMDirectoryPage = () => {
                       className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-xl font-semibold"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      {selectedIkm.kbli}
+                      {selectedIkm?.kbli || "-"}
                     </span>
                   </div>
                   <div>
@@ -1178,17 +1387,7 @@ const IKMDirectoryPage = () => {
                                           return (
                                             <span>{selectedIkm.logo}</span>
                                           );
-                                        return (
-                                          <span className="font-bold text-green-600">
-                                            {selectedIkm.businessName
-                                              ? selectedIkm.businessName
-                                                  .split(" ")
-                                                  .map((n) => n[0])
-                                                  .slice(0, 2)
-                                                  .join("")
-                                              : ""}
-                                          </span>
-                                        );
+                                        return <span>🏭</span>;
                                       })()}
                                     </div>
                                     <h5 className="font-semibold text-gray-800 text-center mb-2">
@@ -1273,15 +1472,7 @@ const IKMDirectoryPage = () => {
                                           {selectedIkm.logo}
                                         </span>
                                       ) : (
-                                        <span className="font-bold text-green-600">
-                                          {selectedIkm.businessName
-                                            ? selectedIkm.businessName
-                                                .split(" ")
-                                                .map((n) => n[0])
-                                                .slice(0, 2)
-                                                .join("")
-                                            : "IK"}
-                                        </span>
+                                        <span className="text-3xl">🏭</span>
                                       )}
                                     </div>
 
@@ -1593,7 +1784,7 @@ const IKMDirectoryPage = () => {
                 )}
 
                 {/* Reviews Section (Placeholder) */}
-                <div>
+                {/* <div>
                   <h3
                     className="text-xl font-bold text-gray-800 mb-4"
                     style={{ fontFamily: "Poppins, sans-serif" }}
@@ -1675,10 +1866,10 @@ const IKMDirectoryPage = () => {
                           <span className="text-sm text-gray-600">1★</span>
                         </div>
                       </div>
-                    </div>
+                    </div> */}
 
-                    {/* Sample Reviews */}
-                    <div className="space-y-4">
+                {/* Sample Reviews */}
+                {/* <div className="space-y-4">
                       <div className="bg-white rounded-xl p-4">
                         <div className="flex items-start justify-between mb-2">
                           <div>
@@ -1743,9 +1934,9 @@ const IKMDirectoryPage = () => {
                           Pelayanan ramah dan responsif.
                         </p>
                       </div>
-                    </div>
-                  </div>
-                </div>
+                    </div> */}
+                {/* </div>
+                </div> */}
 
                 {/* Action Buttons: single primary 'Mulai Chat' with WhatsApp icon */}
                 <div className="sticky bottom-0 bg-white pt-6 pb-4 border-t border-gray-200">

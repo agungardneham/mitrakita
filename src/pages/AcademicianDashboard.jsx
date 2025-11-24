@@ -19,12 +19,22 @@ import {
   Upload,
   Settings,
   LogOut,
+  Heart,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { supabase } from "../supabaseClient";
 
 // ============================================
@@ -43,35 +53,18 @@ const AcademicianDashboard = () => {
 
   // Profile Data State
   const [profileData, setProfileData] = useState({
-    fullName: "Budi Santoso",
-    prefixTitle: "Dr.",
-    suffixTitle: "M.T.",
-    institution: "Institut Teknologi Bandung",
-    department: "Teknik Mesin",
-    nidn: "0012345678",
-    researchField: "Material Science & Manufacturing",
+    fullName: "",
+    prefixTitle: "",
+    suffixTitle: "",
+    institution: "",
+    department: "",
+    nidn: "",
+    researchField: "",
     photo: "👨‍🔬",
-    bio: "Peneliti di bidang teknologi manufaktur dengan fokus pada optimalisasi proses produksi dan material engineering.",
-    googleScholar: "https://scholar.google.com/citations?user=example",
-    researchGate: "https://www.researchgate.net/profile/example",
-    researchHistory: [
-      {
-        year: 2024,
-        title:
-          "Optimalisasi Proses Finishing Furniture Menggunakan Teknologi UV Coating",
-        status: "Selesai",
-      },
-      {
-        year: 2023,
-        title: "Pengembangan Material Komposit untuk Industri Otomotif",
-        status: "Selesai",
-      },
-      {
-        year: 2023,
-        title: "Smart Manufacturing untuk IKM Indonesia",
-        status: "Berlangsung",
-      },
-    ],
+    bio: "",
+    googleScholar: "",
+    researchGate: "",
+    researchHistory: [],
   });
 
   // Load profile from Firestore when user is available
@@ -107,6 +100,55 @@ const AcademicianDashboard = () => {
     loadProfile();
   }, [user]);
 
+  // Fetch favorited IKM data for the academician
+  useEffect(() => {
+    const loadFavoritedIkm = async () => {
+      if (!user) {
+        setFavoritedIkmList([]);
+        return;
+      }
+      try {
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        if (!userSnap.exists()) {
+          setFavoritedIkmList([]);
+          return;
+        }
+
+        const userData = userSnap.data();
+        const favIkmIds = Array.isArray(userData.favoritedIkm)
+          ? userData.favoritedIkm
+          : [];
+
+        if (favIkmIds.length === 0) {
+          setFavoritedIkmList([]);
+          return;
+        }
+
+        // Fetch all IKM profiles and filter to those in favIkmIds
+        const q = query(collection(db, "users"), where("role", "==", "ikm"));
+        const querySnapshot = await getDocs(q);
+        const ikmData = [];
+
+        querySnapshot.forEach((doc) => {
+          const ikm = { id: doc.id, ...doc.data() };
+          if (favIkmIds.includes(doc.id)) {
+            ikmData.push(ikm);
+          }
+        });
+
+        setFavoritedIkmList(ikmData);
+      } catch (err) {
+        console.error("Error loading favorited IKM:", err);
+        setFavoritedIkmList([]);
+      }
+    };
+
+    loadFavoritedIkm();
+  }, [user]);
+
   // Save profile data to Firestore
   const saveProfileToFirestore = async () => {
     if (!user) {
@@ -130,70 +172,19 @@ const AcademicianDashboard = () => {
   };
 
   // Research Data State
-  const [researches, setResearches] = useState([
-    {
-      id: 1,
-      title:
-        "Optimalisasi Proses Finishing Furniture Menggunakan Teknologi UV Coating",
-      status: "completed",
-      field: "Furniture & Kerajinan",
-      year: 2024,
-      abstract:
-        "Penelitian tentang penggunaan teknologi UV coating untuk meningkatkan efisiensi proses finishing furniture.",
-      keywords: ["UV Coating", "Furniture", "Finishing"],
-      futureplan: "Implementasi di 10 IKM furniture di Jepara",
-      collaboration: "",
-      verified: true,
-    },
-    {
-      id: 2,
-      title: "Smart Manufacturing untuk IKM Indonesia",
-      status: "ongoing",
-      field: "Logam & Metalurgi",
-      year: 2023,
-      abstract:
-        "Pengembangan sistem IoT untuk monitoring produksi real-time di IKM logam.",
-      keywords: ["IoT", "Smart Factory", "Manufacturing"],
-      futureplan: "",
-      collaboration:
-        "Membutuhkan IKM logam untuk pilot project implementasi sistem",
-      verified: false,
-    },
-  ]);
+  // Default to empty array so newly registered academicians have no researches
+  const [researches, setResearches] = useState([]);
 
   // IKM Partnership Requests
-  const [partnershipRequests, setPartnershipRequests] = useState([
-    {
-      id: 1,
-      ikmName: "CV Furniture Jaya Abadi",
-      researchTitle: "Optimalisasi Proses Finishing Furniture",
-      requestDate: "2024-11-01",
-      status: "pending",
-      description:
-        "Kami tertarik untuk mengimplementasikan teknologi UV coating di produksi kami",
-    },
-    {
-      id: 2,
-      ikmName: "PT Logam Presisi Indo",
-      researchTitle: "Smart Manufacturing",
-      requestDate: "2024-11-05",
-      status: "pending",
-      description: "Ingin menjadi pilot project untuk sistem IoT monitoring",
-    },
-  ]);
+  const [partnershipRequests, setPartnershipRequests] = useState([{}]);
 
   // Verified Partnerships
-  const [verifiedPartnerships, setVerifiedPartnerships] = useState([
-    {
-      id: 1,
-      ikmName: "UD Meubel Berkah",
-      researchTitle: "Optimalisasi UV Coating",
-      startDate: "2023-06-01",
-      endDate: "2024-03-01",
-      status: "completed",
-      outcome: "Berhasil meningkatkan efisiensi produksi 40%",
-    },
-  ]);
+  const [verifiedPartnerships, setVerifiedPartnerships] = useState([{}]);
+
+  // Favorites State
+  const [favoritedIkmList, setFavoritedIkmList] = useState([]);
+  const [selectedIkmForModal, setSelectedIkmForModal] = useState(null);
+  const [selectedDetail, setSelectedDetail] = useState(null);
 
   const sidebarItems = [
     { id: "overview", label: "Beranda", icon: <Home className="w-5 h-5" /> },
@@ -211,6 +202,11 @@ const AcademicianDashboard = () => {
       id: "partnerships",
       label: "Kemitraan IKM",
       icon: <Users className="w-5 h-5" />,
+    },
+    {
+      id: "favorites",
+      label: "IKM Favorit",
+      icon: <Heart className="w-5 h-5" />,
     },
     // {
     //   id: "messages",
@@ -453,11 +449,23 @@ const AcademicianDashboard = () => {
         <div className="w-64 bg-white shadow-lg hidden md:block">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-2">
-              <img
-                src={profileData.photo}
-                alt="Profil"
-                className="w-12 h-12 object-cover rounded-xl"
-              />
+              <div className="w-12 h-12 bg-white rounded-xl overflow-hidden flex items-center justify-center">
+                {profileData?.photo &&
+                typeof profileData.photo === "string" &&
+                (profileData.photo.startsWith("http") ||
+                  profileData.photo.startsWith("data:")) ? (
+                  <img
+                    src={profileData.photo}
+                    alt="Profil"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span className="text-2xl">{profileData?.photo || "👨‍🔬"}</span>
+                )}
+              </div>
               <div>
                 <h2
                   className="text-lg font-bold text-gray-800"
@@ -1571,6 +1579,1054 @@ const AcademicianDashboard = () => {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Favorites Tab - IKM Favorit */}
+          {activeTab === "favorites" && (
+            <div>
+              <h1
+                className="text-3xl font-bold text-gray-800 mb-8"
+                style={{ fontFamily: "Poppins, sans-serif" }}
+              >
+                IKM Favorit
+              </h1>
+
+              {favoritedIkmList.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {favoritedIkmList.map((ikm) => (
+                    <div
+                      key={ikm.id}
+                      className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 overflow-hidden"
+                    >
+                      {/* Card Header */}
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="w-16 h-16 bg-linear-to-br from-green-500 to-blue-500 rounded-xl flex items-center justify-center text-4xl overflow-hidden">
+                            {ikm.logoUrl ? (
+                              <img
+                                src={ikm.logoUrl}
+                                alt={`${ikm.name} logo`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : ikm.logo ? (
+                              <span>{ikm.logo}</span>
+                            ) : (
+                              <span>🏭</span>
+                            )}
+                          </div>
+                          <span className="text-2xl">❤️</span>
+                        </div>
+
+                        <h3
+                          className="text-xl font-bold text-gray-800 mb-2"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          {ikm.businessName}
+                        </h3>
+
+                        <div
+                          className="flex items-center text-sm text-gray-600 mb-3"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        >
+                          <span className="mr-1">📍</span>
+                          {ikm.officeAddress}
+                        </div>
+
+                        <div className="mb-4">
+                          <span
+                            className="inline-block bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            KBLI {ikm.kbli}
+                          </span>
+                        </div>
+
+                        <div className="mb-4">
+                          <p
+                            className="text-sm text-gray-600 font-semibold mb-2"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Produk:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.isArray(ikm.products) &&
+                              ikm.products.slice(0, 2).map((product, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-lg"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  {typeof product === "string"
+                                    ? product
+                                    : product.name}
+                                </span>
+                              ))}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setSelectedIkmForModal(ikm)}
+                            className="flex-1 bg-linear-to-r from-green-600 to-green-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Lihat Profil
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 bg-white rounded-2xl shadow-lg">
+                  <div className="text-6xl mb-4">🤍</div>
+                  <h3
+                    className="text-2xl font-bold text-gray-800 mb-2"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Belum Ada IKM Favorit
+                  </h3>
+                  <p
+                    className="text-gray-600 mb-6"
+                    style={{ fontFamily: "Open Sans, sans-serif" }}
+                  >
+                    Kunjungi Direktori IKM dan tandai IKM favorit Anda dengan
+                    jantung ❤️
+                  </p>
+                  <Link
+                    to="/direktori"
+                    className="inline-block bg-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+                    style={{ fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    Jelajahi Direktori IKM
+                  </Link>
+                </div>
+              )}
+
+              {/* IKM Detail Modal */}
+              {selectedIkmForModal && (
+                <div
+                  className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                  onClick={() => setSelectedIkmForModal(null)}
+                >
+                  <div
+                    className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal Header */}
+                    <div className="sticky top-0 bg-linear-to-r from-green-600 to-blue-600 text-white p-6 rounded-t-2xl">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-start space-x-4">
+                          <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center text-5xl overflow-hidden">
+                            {selectedIkmForModal.logoUrl ? (
+                              <img
+                                src={selectedIkmForModal.logoUrl}
+                                alt={`${selectedIkmForModal.businessName} logo`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : selectedIkmForModal.logo ? (
+                              <span>{selectedIkmForModal.logo}</span>
+                            ) : (
+                              <span>🏭</span>
+                            )}
+                          </div>
+                          <div>
+                            <h2
+                              className="text-3xl font-bold mb-2"
+                              style={{ fontFamily: "Poppins, sans-serif" }}
+                            >
+                              {selectedIkmForModal.businessName}
+                            </h2>
+                            <div className="flex items-center space-x-4 text-green-50">
+                              {selectedIkmForModal?.officeAddress && (
+                                <span className="flex items-center">
+                                  <span className="mr-1">📍</span>
+                                  {selectedIkmForModal.officeAddress}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setSelectedIkmForModal(null)}
+                          className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition"
+                        >
+                          <X className="w-6 h-6" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="p-6 space-y-6">
+                      {/* Quick Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-green-50 rounded-xl p-4 text-center">
+                          <p
+                            className="text-2xl font-bold text-green-600"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            {selectedIkmForModal?.establishedYear || "-"}
+                          </p>
+                          <p
+                            className="text-sm text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Tahun Berdiri
+                          </p>
+                        </div>
+                        <div className="bg-blue-50 rounded-xl p-4 text-center">
+                          <p
+                            className="text-2xl font-bold text-blue-600"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            {selectedIkmForModal?.employees || "-"}
+                          </p>
+                          <p
+                            className="text-sm text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Karyawan
+                          </p>
+                        </div>
+                        <div className="bg-yellow-50 rounded-xl p-4 text-center">
+                          <p
+                            className="text-2xl font-bold text-yellow-600"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            {selectedIkmForModal?.partnerships || 0}
+                          </p>
+                          <p
+                            className="text-sm text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Kemitraan
+                          </p>
+                        </div>
+                        <div className="bg-purple-50 rounded-xl p-4 text-center">
+                          <p
+                            className="text-2xl font-bold text-purple-600"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            {Array.isArray(selectedIkmForModal?.certifications)
+                              ? selectedIkmForModal.certifications.length
+                              : 0}
+                          </p>
+                          <p
+                            className="text-sm text-gray-600"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Sertifikasi
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <h3
+                          className="text-xl font-bold text-gray-800 mb-3"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          Tentang Perusahaan
+                        </h3>
+                        <p
+                          className="text-gray-700 leading-relaxed"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        >
+                          {selectedIkmForModal?.bio ||
+                            "Informasi tentang perusahaan tidak tersedia"}
+                        </p>
+                      </div>
+
+                      {/* Contact Information */}
+                      <div className="bg-gray-50 rounded-xl p-6">
+                        <h3
+                          className="text-xl font-bold text-gray-800 mb-4"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          Informasi Kontak
+                        </h3>
+                        <div className="space-y-3">
+                          <div className="flex items-start">
+                            <span className="w-8 text-gray-600">📍</span>
+                            <div>
+                              <p
+                                className="font-semibold text-gray-700"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
+                              >
+                                Alamat
+                              </p>
+                              <p
+                                className="text-gray-600"
+                                style={{ fontFamily: "Open Sans, sans-serif" }}
+                              >
+                                {selectedIkmForModal?.officeAddress ||
+                                  "Alamat tidak tersedia"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="w-8 text-gray-600">📧</span>
+                            <div>
+                              <p
+                                className="font-semibold text-gray-700"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
+                              >
+                                Email
+                              </p>
+                              {selectedIkmForModal?.email ? (
+                                <a
+                                  href={`mailto:${selectedIkmForModal.email}`}
+                                  className="text-green-600 hover:underline"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  {selectedIkmForModal.email}
+                                </a>
+                              ) : (
+                                <span
+                                  className="text-gray-600"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  Email tidak tersedia
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="w-8 text-gray-600">📞</span>
+                            <div>
+                              <p
+                                className="font-semibold text-gray-700"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
+                              >
+                                Telepon
+                              </p>
+                              {selectedIkmForModal?.phone ? (
+                                <a
+                                  href={`tel:${selectedIkmForModal.phone}`}
+                                  className="text-green-600 hover:underline"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  {selectedIkmForModal.phone}
+                                </a>
+                              ) : (
+                                <span
+                                  className="text-gray-600"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  Telepon tidak tersedia
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="w-8 text-gray-600">🌐</span>
+                            <div>
+                              <p
+                                className="font-semibold text-gray-700"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
+                              >
+                                Website
+                              </p>
+                              {selectedIkmForModal?.website ? (
+                                <a
+                                  href={`https://${selectedIkmForModal.website}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 hover:underline"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  {selectedIkmForModal.website}
+                                </a>
+                              ) : (
+                                <span
+                                  className="text-gray-600"
+                                  style={{
+                                    fontFamily: "Open Sans, sans-serif",
+                                  }}
+                                >
+                                  Website tidak tersedia
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* KBLI & Service Type */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h3
+                            className="text-lg font-bold text-gray-800 mb-3"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            KBLI
+                          </h3>
+                          <span
+                            className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-xl font-semibold"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            {selectedIkmForModal?.kbli || "-"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3
+                            className="text-lg font-bold text-gray-800 mb-3"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            Jenis Layanan
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {(() => {
+                              const products = Array.isArray(
+                                selectedIkmForModal?.products
+                              )
+                                ? selectedIkmForModal.products
+                                : Array.isArray(
+                                    selectedIkmForModal?.productList
+                                  )
+                                ? selectedIkmForModal.productList
+                                : [];
+                              const services = Array.isArray(
+                                selectedIkmForModal?.services
+                              )
+                                ? selectedIkmForModal.services
+                                : Array.isArray(
+                                    selectedIkmForModal?.serviceList
+                                  )
+                                ? selectedIkmForModal.serviceList
+                                : Array.isArray(
+                                    selectedIkmForModal?.services_offered
+                                  )
+                                ? selectedIkmForModal.services_offered
+                                : [];
+
+                              const hasProducts = products.length > 0;
+                              const hasServices = services.length > 0;
+
+                              return (
+                                <>
+                                  {hasProducts && (
+                                    <span
+                                      className="inline-block bg-blue-100 text-blue-700 px-4 py-2 rounded-xl font-semibold"
+                                      style={{
+                                        fontFamily: "Montserrat, sans-serif",
+                                      }}
+                                    >
+                                      Produk
+                                    </span>
+                                  )}
+                                  {hasServices && (
+                                    <span
+                                      className="inline-block bg-blue-100 text-blue-700 px-4 py-2 rounded-xl font-semibold"
+                                      style={{
+                                        fontFamily: "Montserrat, sans-serif",
+                                      }}
+                                    >
+                                      Layanan
+                                    </span>
+                                  )}
+                                  {!hasProducts && !hasServices && (
+                                    <span
+                                      className="inline-block bg-blue-100 text-blue-700 px-4 py-2 rounded-xl font-semibold"
+                                      style={{
+                                        fontFamily: "Montserrat, sans-serif",
+                                      }}
+                                    >
+                                      {selectedIkmForModal?.serviceType || "-"}
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Products & Services */}
+                      <div>
+                        <h3
+                          className="text-xl font-bold text-gray-800 mb-4"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          Produk & Layanan
+                        </h3>
+
+                        {(() => {
+                          const products = Array.isArray(
+                            selectedIkmForModal.products
+                          )
+                            ? selectedIkmForModal.products
+                            : Array.isArray(selectedIkmForModal.productList)
+                            ? selectedIkmForModal.productList
+                            : [];
+                          const services = Array.isArray(
+                            selectedIkmForModal.services
+                          )
+                            ? selectedIkmForModal.services
+                            : Array.isArray(selectedIkmForModal.serviceList)
+                            ? selectedIkmForModal.serviceList
+                            : Array.isArray(
+                                selectedIkmForModal.services_offered
+                              )
+                            ? selectedIkmForModal.services_offered
+                            : [];
+
+                          const serviceFallback =
+                            !services.length && selectedIkmForModal.serviceType
+                              ? [selectedIkmForModal.serviceType]
+                              : [];
+
+                          const combinedServices = [
+                            ...services,
+                            ...serviceFallback,
+                          ];
+
+                          return (
+                            <div className="space-y-4">
+                              {products.length > 0 && (
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2">
+                                    Produk
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {products.map((product, idx) => {
+                                      const name =
+                                        typeof product === "string"
+                                          ? product
+                                          : product.name ||
+                                            product.title ||
+                                            "Produk";
+                                      const capacity =
+                                        product && typeof product === "object"
+                                          ? product.capacity ||
+                                            product.capacityInfo ||
+                                            product.description ||
+                                            ""
+                                          : "";
+                                      const prodImg =
+                                        product && typeof product === "object"
+                                          ? product.imageUrl ||
+                                            product.image ||
+                                            product.photo ||
+                                            product.logoUrl ||
+                                            null
+                                          : null;
+                                      return (
+                                        <div
+                                          key={`p-${idx}`}
+                                          className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-green-500 hover:shadow-lg transition"
+                                        >
+                                          <div className="w-full h-32 bg-linear-to-br from-green-100 to-blue-100 rounded-xl mb-3 flex items-center justify-center text-4xl overflow-hidden">
+                                            {prodImg ? (
+                                              <img
+                                                src={prodImg}
+                                                alt={
+                                                  (typeof product ===
+                                                    "object" &&
+                                                    (product.name ||
+                                                      product.title)) ||
+                                                  `${selectedIkmForModal.businessName} product`
+                                                }
+                                                className="w-full h-full object-cover"
+                                              />
+                                            ) : selectedIkmForModal.logoUrl ? (
+                                              <img
+                                                src={
+                                                  selectedIkmForModal.logoUrl
+                                                }
+                                                alt={`${selectedIkmForModal.businessName} logo`}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            ) : selectedIkmForModal.logo ? (
+                                              <span>
+                                                {selectedIkmForModal.logo}
+                                              </span>
+                                            ) : (
+                                              <span>🏭</span>
+                                            )}
+                                          </div>
+                                          <h5 className="font-semibold text-gray-800 text-center mb-2">
+                                            {name}
+                                          </h5>
+                                          {capacity && (
+                                            <p className="text-center text-gray-600">
+                                              {capacity}
+                                            </p>
+                                          )}
+                                          <div className="mt-3 flex justify-center">
+                                            <button
+                                              onClick={() =>
+                                                setSelectedDetail({
+                                                  kind: "product",
+                                                  item: product,
+                                                })
+                                              }
+                                              className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg font-semibold hover:bg-gray-200 transition"
+                                            >
+                                              Detail
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {combinedServices.length > 0 && (
+                                <div>
+                                  <h4 className="text-lg font-semibold mb-2">
+                                    Layanan
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {combinedServices.map((svc, idx) => {
+                                      const title =
+                                        typeof svc === "string"
+                                          ? svc
+                                          : svc.name || svc.title || "Layanan";
+                                      const desc =
+                                        svc && typeof svc === "object"
+                                          ? svc.description || svc.detail || ""
+                                          : "";
+                                      const capacity =
+                                        svc && typeof svc === "object"
+                                          ? svc.capacity ||
+                                            svc.capacityInfo ||
+                                            svc.capacity_range ||
+                                            svc.capacityRange ||
+                                            ""
+                                          : "";
+                                      const img =
+                                        svc && typeof svc === "object"
+                                          ? svc.imageUrl ||
+                                            svc.logoUrl ||
+                                            svc.photo ||
+                                            null
+                                          : null;
+
+                                      return (
+                                        <div
+                                          key={`s-${idx}`}
+                                          className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-blue-500 hover:shadow-lg transition"
+                                        >
+                                          <div className="w-full h-28 bg-linear-to-br from-gray-50 to-blue-50 rounded-xl mb-3 flex items-center justify-center overflow-hidden">
+                                            {img ? (
+                                              <img
+                                                src={img}
+                                                alt={`${title} image`}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            ) : selectedIkmForModal.logoUrl ? (
+                                              <img
+                                                src={
+                                                  selectedIkmForModal.logoUrl
+                                                }
+                                                alt={`${selectedIkmForModal.businessName} logo`}
+                                                className="w-full h-full object-cover"
+                                              />
+                                            ) : selectedIkmForModal.logo ? (
+                                              <span className="text-3xl">
+                                                {selectedIkmForModal.logo}
+                                              </span>
+                                            ) : (
+                                              <span className="text-3xl">
+                                                🏭
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <h5 className="font-semibold text-gray-800 text-center mb-2">
+                                            {title}
+                                          </h5>
+                                          {capacity && (
+                                            <p className="text-center text-gray-600 mb-1">
+                                              {capacity}
+                                            </p>
+                                          )}
+                                          {desc && (
+                                            <p className="text-center text-gray-600">
+                                              {desc}
+                                            </p>
+                                          )}
+                                          <div className="mt-3 flex justify-center">
+                                            <button
+                                              onClick={() =>
+                                                setSelectedDetail({
+                                                  kind: "service",
+                                                  item: svc,
+                                                })
+                                              }
+                                              className="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg font-semibold hover:bg-gray-200 transition"
+                                            >
+                                              Detail
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {products.length === 0 &&
+                                combinedServices.length === 0 && (
+                                  <p className="text-gray-600">
+                                    Tidak ada data produk atau layanan yang
+                                    tersedia.
+                                  </p>
+                                )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Machines & Equipment */}
+                      {(() => {
+                        const machines = Array.isArray(
+                          selectedIkmForModal?.machines
+                        )
+                          ? selectedIkmForModal.machines
+                          : Array.isArray(selectedIkmForModal?.machineList)
+                          ? selectedIkmForModal.machineList
+                          : [];
+
+                        if (!machines.length) return null;
+
+                        return (
+                          <div>
+                            <h3
+                              className="text-xl font-bold text-gray-800 mb-4"
+                              style={{ fontFamily: "Poppins, sans-serif" }}
+                            >
+                              Mesin & Peralatan Produksi
+                            </h3>
+                            <div className="space-y-3">
+                              {machines.map((machine, idx) => {
+                                const name =
+                                  (machine &&
+                                    (machine.name ||
+                                      machine.spesifikasi ||
+                                      machine.spec ||
+                                      machine.title ||
+                                      machine.model)) ||
+                                  `Mesin ${idx + 1}`;
+                                const capacity =
+                                  machine &&
+                                  (machine.kapasitas ||
+                                    machine.capacity ||
+                                    machine.capacityInfo ||
+                                    machine.kapasitas_produksi ||
+                                    machine.capacity_range ||
+                                    "");
+                                const quantity =
+                                  machine &&
+                                  (machine.jumlah ||
+                                    machine.quantity ||
+                                    machine.qty ||
+                                    machine.count ||
+                                    machine.unit ||
+                                    "");
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="bg-linear-to-r from-gray-50 to-blue-50 border-2 border-gray-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition"
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center mb-2">
+                                          <span className="text-2xl mr-3">
+                                            ⚙️
+                                          </span>
+                                          <h4
+                                            className="font-bold text-gray-800"
+                                            style={{
+                                              fontFamily:
+                                                "Montserrat, sans-serif",
+                                            }}
+                                          >
+                                            {name}
+                                          </h4>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 mt-3">
+                                          <div className="flex items-center">
+                                            <span className="text-sm text-gray-600 mr-2">
+                                              📊
+                                            </span>
+                                            <div>
+                                              <p className="text-xs text-gray-500">
+                                                Kuantitas
+                                              </p>
+                                              <p
+                                                className="font-semibold text-gray-800"
+                                                style={{
+                                                  fontFamily:
+                                                    "Montserrat, sans-serif",
+                                                }}
+                                              >
+                                                {quantity
+                                                  ? `${quantity} Unit`
+                                                  : "-"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center">
+                                            <span className="text-sm text-gray-600 mr-2">
+                                              ⚡
+                                            </span>
+                                            <div>
+                                              <p className="text-xs text-gray-500">
+                                                Kapasitas
+                                              </p>
+                                              <p
+                                                className="font-semibold text-blue-600"
+                                                style={{
+                                                  fontFamily:
+                                                    "Montserrat, sans-serif",
+                                                }}
+                                              >
+                                                {capacity || "-"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Certifications */}
+                      <div>
+                        <h3
+                          className="text-xl font-bold text-gray-800 mb-4"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          Sertifikasi & Standar Mutu
+                        </h3>
+                        <div className="flex flex-wrap gap-3">
+                          {Array.isArray(selectedIkmForModal.certifications) &&
+                            selectedIkmForModal.certifications.map(
+                              (cert, idx) => (
+                                <span
+                                  key={idx}
+                                  className="bg-yellow-50 border-2 border-yellow-200 text-yellow-700 px-4 py-2 rounded-xl font-semibold flex items-center"
+                                  style={{
+                                    fontFamily: "Montserrat, sans-serif",
+                                  }}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  {typeof cert === "string"
+                                    ? cert
+                                    : cert.name
+                                    ? `${cert.name}${
+                                        cert.year ? ` (${cert.year})` : ""
+                                      }`
+                                    : JSON.stringify(cert)}
+                                </span>
+                              )
+                            )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sticky Footer */}
+                    <div className="sticky bottom-0 bg-white pt-6 pb-4 border-t border-gray-200">
+                      <div className="px-6 flex gap-4">
+                        <button
+                          onClick={() =>
+                            (window.location.href = `https://wa.me/${selectedIkmForModal?.phone}`)
+                          }
+                          className="flex items-center justify-center gap-2 w-1/2 bg-green-600 text-white py-3 rounded-2xl font-semibold hover:bg-green-700 hover:shadow-lg active:scale-95 transition-all duration-200"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="w-6 h-6"
+                            aria-hidden="true"
+                          >
+                            <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.37 0 .02 5.36.02 12a11.3 11.3 0 001.59 5.6L0 24l6.7-1.74A11.94 11.94 0 0012 24c6.63 0 12-5.36 12-12 0-3.2-1.25-6.2-3.48-8.52zM12 21.5c-1.2 0-2.38-.32-3.42-.93l-.24-.14-3.98 1.02 1.06-3.88-.15-.25A9.5 9.5 0 012.5 12 9.5 9.5 0 0112 2.5c5.24 0 9.5 4.26 9.5 9.5S17.24 21.5 12 21.5z" />
+                            <path d="M17.6 14.2c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15s-.78.98-.96 1.18c-.18.2-.36.22-.66.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.13-.13.3-.36.45-.54.15-.18.2-.3.3-.5.1-.2 0-.38-.05-.53-.06-.15-.68-1.64-.93-2.25-.24-.59-.49-.51-.68-.52l-.58-.01c-.2 0-.53.07-.8.35s-1.05 1.03-1.05 2.5 1.08 2.9 1.23 3.1c.15.2 2.12 3.24 5.14 4.54 3.02 1.3 3.02.87 3.57.82.55-.05 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.58-.35z" />
+                          </svg>
+                          <span>Chat untuk Bermitra</span>
+                        </button>
+
+                        <button
+                          className="flex items-center justify-center gap-2 w-1/2 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 hover:shadow-lg active:scale-95 transition-all duration-200"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                          onClick={() => {
+                            const subject = "Permintaan Kemitraan";
+                            const body = `Yth. ${selectedIkmForModal?.businessName},\n\nSaya tertarik untuk membahas kemungkinan bermitra dengan perusahaan Anda.`;
+                            window.location.href = `mailto:${
+                              selectedIkmForModal?.email
+                            }?subject=${encodeURIComponent(
+                              subject
+                            )}&body=${encodeURIComponent(body)}`;
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            className="w-6 h-6"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4h16v16H4V4zm0 0l8 8 8-8"
+                            />
+                          </svg>
+                          <span>Email untuk Bermitra</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Product/Service Detail Popup (same behavior as directory) */}
+              {selectedDetail && (
+                <div
+                  className="fixed inset-0 z-60 flex items-center justify-center p-4"
+                  onClick={() => setSelectedDetail(null)}
+                >
+                  <div
+                    className="bg-white rounded-2xl w-full max-w-xl p-6 shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <h4 className="text-xl font-bold text-gray-800">
+                        {(() => {
+                          const it = selectedDetail.item;
+                          if (typeof it === "string") return it;
+                          return (
+                            it.name ||
+                            it.title ||
+                            it.spesifikasi ||
+                            it.model ||
+                            "Detail"
+                          );
+                        })()}
+                      </h4>
+                      <button
+                        onClick={() => setSelectedDetail(null)}
+                        className="text-gray-500 hover:text-gray-700"
+                        aria-label="Close detail"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {(() => {
+                        const it = selectedDetail.item;
+                        const title =
+                          typeof it === "string"
+                            ? it
+                            : it.name || it.title || it.spesifikasi || "-";
+                        const desc =
+                          it && typeof it === "object"
+                            ? it.description || it.detail || it.desc || ""
+                            : "";
+                        const capacity =
+                          it && typeof it === "object"
+                            ? it.capacity ||
+                              it.kapasitas ||
+                              it.capacityInfo ||
+                              ""
+                            : "";
+                        const img =
+                          it && typeof it === "object"
+                            ? it.imageUrl || it.photo || it.logoUrl || null
+                            : null;
+
+                        return (
+                          <div>
+                            {img && (
+                              <div className="w-full h-40 mb-3 overflow-hidden rounded-lg">
+                                <img
+                                  src={img}
+                                  alt={title}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                            )}
+                            <p className="text-sm text-gray-600">
+                              <span className="font-semibold">Kapasitas:</span>{" "}
+                              {capacity || "-"}
+                            </p>
+                            {desc && (
+                              <div>
+                                <h5 className="font-semibold mt-3">
+                                  Deskripsi
+                                </h5>
+                                <p className="text-gray-700 mt-1">{desc}</p>
+                              </div>
+                            )}
+                            <div className="mt-4">
+                              <h5 className="font-semibold">Detail Lengkap</h5>
+                              <div className="mt-2 text-sm text-gray-700 space-y-2">
+                                {it && typeof it === "object" ? (
+                                  Object.entries(it)
+                                    .filter(([key]) => {
+                                      const kk = String(key).toLowerCase();
+                                      const hidden = [
+                                        "name",
+                                        "title",
+                                        "imageurl",
+                                        "image",
+                                        "photo",
+                                        "logourl",
+                                      ];
+                                      return !hidden.includes(kk);
+                                    })
+                                    .map(([key, val]) => (
+                                      <div key={key} className="flex">
+                                        <div className="w-36 text-xs text-gray-600">
+                                          {key}
+                                        </div>
+                                        <div className="flex-1">
+                                          {typeof val === "object"
+                                            ? JSON.stringify(val)
+                                            : String(val)}
+                                        </div>
+                                      </div>
+                                    ))
+                                ) : (
+                                  <div className="text-gray-500">-</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

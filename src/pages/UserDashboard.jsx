@@ -18,6 +18,7 @@ import {
   Upload,
   Settings,
   LogOut,
+  Heart,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -49,68 +50,40 @@ const UserDashboard = () => {
     products: "",
     needs: "",
     bio: "",
+    city: "",
   });
 
   // IKM Partnership Requests
   const [partnershipRequests, setPartnershipRequests] = useState([
-    {
-      id: 1,
-      ikmName: "CV Furniture Jaya Abadi",
-      product: "Meja dan Kursi Kantor",
-      requestDate: "2024-11-08",
-      status: "pending",
-      description:
-        "Kami siap menyediakan furniture kantor berkualitas tinggi sesuai spesifikasi yang Anda butuhkan",
-      deliveryTime: "3-4 minggu",
-    },
-    {
-      id: 2,
-      ikmName: "PT Logam Presisi Indo",
-      product: "Komponen Logam Custom",
-      requestDate: "2024-11-10",
-      status: "pending",
-      description:
-        "Manufaktur komponen logam presisi dengan teknologi CNC untuk kebutuhan produksi Anda",
-      deliveryTime: "2-3 minggu",
-    },
+    {},
+    // {
+    //   id: 2,
+    //   ikmName: "PT Logam Presisi Indo",
+    //   product: "Komponen Logam Custom",
+    //   requestDate: "2024-11-10",
+    //   status: "pending",
+    //   description:
+    //     "Manufaktur komponen logam presisi dengan teknologi CNC untuk kebutuhan produksi Anda",
+    //   deliveryTime: "2-3 minggu",
+    // },
   ]);
 
   // Active Partnerships
-  const [activePartnerships, setActivePartnerships] = useState([
-    {
-      id: 1,
-      ikmName: "UD Kemasan Kreatif",
-      product: "Box Karton Custom",
-      startDate: "2024-06-01",
-      status: "active",
-      orderCount: 5,
-      lastOrder: "2024-10-15",
-      rating: 4.8,
-    },
-    {
-      id: 2,
-      ikmName: "CV Elektronik Mandiri",
-      product: "PCB Assembly",
-      startDate: "2024-03-15",
-      status: "active",
-      orderCount: 12,
-      lastOrder: "2024-11-05",
-      rating: 4.9,
-    },
-  ]);
+  // Default to empty array so new users (no partnerships yet) show 0
+  const [activePartnerships, setActivePartnerships] = useState([]);
 
   // Completed Partnerships
   const [completedPartnerships, setCompletedPartnerships] = useState([
     {
-      id: 1,
-      ikmName: "UD Meubel Berkah",
-      product: "Furniture Ruang Meeting",
-      startDate: "2023-08-01",
-      endDate: "2024-02-28",
-      status: "completed",
-      orderCount: 3,
-      rating: 4.7,
-      review: "Kualitas produk sangat baik dan pengiriman tepat waktu",
+      // id: 1,
+      // ikmName: "UD Meubel Berkah",
+      // product: "Furniture Ruang Meeting",
+      // startDate: "2023-08-01",
+      // endDate: "2024-02-28",
+      // status: "completed",
+      // orderCount: 3,
+      // rating: 4.7,
+      // review: "Kualitas produk sangat baik dan pengiriman tepat waktu",
     },
   ]);
 
@@ -118,6 +91,11 @@ const UserDashboard = () => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
+
+  // IKM Favorit State
+  const [favoritedIkmList, setFavoritedIkmList] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
+  const [selectedIkmForModal, setSelectedIkmForModal] = useState(null);
 
   // Handle select file for upload
   const handlePhotoFileChange = (e) => {
@@ -187,6 +165,11 @@ const UserDashboard = () => {
       label: "Kemitraan",
       icon: <Users className="w-5 h-5" />,
     },
+    {
+      id: "favorites",
+      label: "IKM Favorit",
+      icon: <Heart className="w-5 h-5" />,
+    },
   ];
 
   const handleProfileUpdate = (field, value) => {
@@ -216,6 +199,7 @@ const UserDashboard = () => {
       );
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
+      // write to camelCase field only
       await updateDoc(userDocRef, {
         partnershipHistory: arrayUnion(newEntry),
       });
@@ -228,13 +212,14 @@ const UserDashboard = () => {
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
         const snap = await getDoc(userDocRef);
-        const existing =
+        const existingCamel =
           snap.exists() && Array.isArray(snap.data().partnershipHistory)
             ? snap.data().partnershipHistory
             : [];
+        const merged = [...existingCamel, newEntry];
         await setDoc(
           userDocRef,
-          { partnershipHistory: [...existing, newEntry] },
+          { partnershipHistory: merged },
           { merge: true }
         );
       } catch (err2) {
@@ -304,12 +289,19 @@ const UserDashboard = () => {
       const userDocRef = doc(db, "users", user.uid);
       const snap = await getDoc(userDocRef);
       if (snap.exists()) {
-        const historyUpdated = Array.isArray(snap.data().partnershipHistory)
-          ? snap.data().partnershipHistory.filter((h) => h.id !== historyId)
+        // Ambil data dari field camelCase (database menggunakan camelCase)
+        const historyCamel = Array.isArray(snap.data().partnershipHistory)
+          ? snap.data().partnershipHistory
           : [];
-        const activeUpdated = Array.isArray(snap.data().activePartnerships)
-          ? snap.data().activePartnerships.filter((a) => a.id !== historyId)
+        const activeCamel = Array.isArray(snap.data().activePartnerships)
+          ? snap.data().activePartnerships
           : [];
+
+        // Filter item yang akan dihapus
+        const historyUpdated = historyCamel.filter((h) => h.id !== historyId);
+        const activeUpdated = activeCamel.filter((a) => a.id !== historyId);
+
+        // Simpan hanya ke camelCase fields (hindari penulisan snake_case)
         await setDoc(
           userDocRef,
           {
@@ -338,12 +330,16 @@ const UserDashboard = () => {
         if (userSnap.exists()) {
           const data = userSnap.data();
           setProfileData((prev) => ({ ...prev, ...data }));
-          if (Array.isArray(data.activePartnerships)) {
-            setActivePartnerships(data.activePartnerships);
-          }
-          if (Array.isArray(data.partnershipHistory)) {
-            setPartnershipHistory(data.partnershipHistory);
-          }
+          // load camelCase fields from Firestore (database uses camelCase)
+          const loadedActive = Array.isArray(data.activePartnerships)
+            ? data.activePartnerships
+            : [];
+          const loadedHistory = Array.isArray(data.partnershipHistory)
+            ? data.partnershipHistory
+            : [];
+
+          if (loadedActive.length) setActivePartnerships(loadedActive);
+          if (loadedHistory.length) setPartnershipHistory(loadedHistory);
           if (Array.isArray(data.completedPartnerships)) {
             setCompletedPartnerships(data.completedPartnerships);
           }
@@ -356,13 +352,32 @@ const UserDashboard = () => {
     loadUserData();
   }, [user]);
 
+  // Save profile data to Firestore
+  const saveProfileToFirestore = async (overrideData) => {
+    if (!user) {
+      alert("Silakan login terlebih dahulu untuk menyimpan profil.");
+      return;
+    }
+    try {
+      const { getFirestore, doc, setDoc } = await import("firebase/firestore");
+      const db = getFirestore();
+      const userDocRef = doc(db, "users", user.uid);
+      // allow passing overrideData (e.g., latest profileData), else use state
+      await setDoc(userDocRef, overrideData || profileData, { merge: true });
+    } catch (err) {
+      console.error("Error saving profile to Firestore:", err);
+      throw err;
+    }
+  };
+
   const handleVerifyPartnership = (id, action) => {
     const request = partnershipRequests.find((r) => r.id === id);
+    if (!request) return;
     if (action === "approve") {
       setActivePartnerships([
         ...activePartnerships,
         {
-          id: activePartnerships.length + 1,
+          id: Date.now(),
           ikmName: request.ikmName,
           product: request.product,
           startDate: new Date().toISOString().split("T")[0],
@@ -395,13 +410,14 @@ const UserDashboard = () => {
       );
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
+      // update camelCase fields only
       await updateDoc(userDocRef, {
         activePartnerships: arrayUnion(newPartnership),
         partnershipHistory: arrayUnion(newPartnership),
       });
     } catch (err) {
       console.error("Error saving partnership to Firestore (primary):", err);
-      // fallback: merge and set
+      // fallback: merge and set both keys
       try {
         const { getFirestore, doc, getDoc, setDoc } = await import(
           "firebase/firestore"
@@ -409,19 +425,22 @@ const UserDashboard = () => {
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
         const snap = await getDoc(userDocRef);
-        const existingActive =
+        const existingActiveCamel =
           snap.exists() && Array.isArray(snap.data().activePartnerships)
             ? snap.data().activePartnerships
             : [];
-        const existingHistory =
+        const existingHistoryCamel =
           snap.exists() && Array.isArray(snap.data().partnershipHistory)
             ? snap.data().partnershipHistory
             : [];
+        const mergedActive = [...existingActiveCamel, newPartnership];
+        const mergedHistory = [...existingHistoryCamel, newPartnership];
+
         await setDoc(
           userDocRef,
           {
-            activePartnerships: [...existingActive, newPartnership],
-            partnershipHistory: [...existingHistory, newPartnership],
+            activePartnerships: mergedActive,
+            partnershipHistory: mergedHistory,
           },
           { merge: true }
         );
@@ -440,6 +459,47 @@ const UserDashboard = () => {
     return [...partnershipHistory, ...activeNotInHistory];
   }, [partnershipHistory, activePartnerships]);
 
+  // Fetch IKM Favorit from Firestore and load IKM data
+  useEffect(() => {
+    const fetchFavoritedIkm = async () => {
+      if (!user) return;
+      setLoadingFavorites(true);
+      try {
+        const { getFirestore, doc, getDoc } = await import(
+          "firebase/firestore"
+        );
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+        let favoritedIds = [];
+        if (userSnap.exists() && Array.isArray(userSnap.data().favoritedIkm)) {
+          favoritedIds = userSnap.data().favoritedIkm;
+        }
+        if (favoritedIds.length === 0) {
+          setFavoritedIkmList([]);
+          setLoadingFavorites(false);
+          return;
+        }
+        // Fetch each IKM doc by ID
+        const promises = favoritedIds.map(async (ikmId) => {
+          const ikmDocRef = doc(db, "ikm", ikmId);
+          const ikmSnap = await getDoc(ikmDocRef);
+          return ikmSnap.exists()
+            ? { id: ikmSnap.id, ...ikmSnap.data() }
+            : null;
+        });
+        const ikmListRaw = await Promise.all(promises);
+        const ikmList = ikmListRaw.filter(Boolean);
+        setFavoritedIkmList(ikmList);
+      } catch (err) {
+        console.error("Error fetching favorited IKM:", err);
+        setFavoritedIkmList([]);
+      }
+      setLoadingFavorites(false);
+    };
+    fetchFavoritedIkm();
+  }, [user]);
+
   return (
     <div>
       <Navbar userRole="industry" />
@@ -456,9 +516,13 @@ const UserDashboard = () => {
                     src={profileData.photo}
                     alt="avatar"
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // hide broken image; fallback will show below
+                      e.currentTarget.style.display = "none";
+                    }}
                   />
                 ) : (
-                  <span>{profileData.photo}</span>
+                  <span>{profileData.photo || "👨‍💼"}</span>
                 )}
               </div>
               <div>
@@ -536,7 +600,7 @@ const UserDashboard = () => {
               </div>
 
               {/* Pending Partnership Requests */}
-              {partnershipRequests.length > 0 && (
+              {/* {partnershipRequests.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
                   <h2
                     className="text-xl font-bold text-gray-800 mb-6"
@@ -607,7 +671,7 @@ const UserDashboard = () => {
                     ))}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -718,10 +782,13 @@ const UserDashboard = () => {
                                 src={profileData.photo}
                                 alt="avatar"
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
                               />
                             ) : (
                               <span className="text-5xl">
-                                {profileData.photo}
+                                {profileData.photo || "👨‍💼"}
                               </span>
                             )}
                           </div>
@@ -741,10 +808,13 @@ const UserDashboard = () => {
                               src={profileData.photo}
                               alt="avatar"
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
                             />
                           ) : (
                             <span className="text-5xl">
-                              {profileData.photo}
+                              {profileData.photo || "👨‍💼"}
                             </span>
                           )}
                         </div>
@@ -819,6 +889,7 @@ const UserDashboard = () => {
                       <input
                         type="text"
                         value={profileData.companyName}
+                        placeholder="Isi dengan nama perusahaan Anda"
                         onChange={(e) =>
                           handleProfileUpdate("companyName", e.target.value)
                         }
@@ -841,6 +912,7 @@ const UserDashboard = () => {
                       <input
                         type="text"
                         value={profileData.position}
+                        placeholder="Isi dengan jabatan Anda di perusahaan"
                         onChange={(e) =>
                           handleProfileUpdate("position", e.target.value)
                         }
@@ -863,8 +935,32 @@ const UserDashboard = () => {
                       <input
                         type="text"
                         value={profileData.department}
+                        placeholder="Isi dengan departemen/divisi tempat Anda bekerja"
                         onChange={(e) =>
                           handleProfileUpdate("department", e.target.value)
+                        }
+                        disabled={!editingProfile}
+                        className={`w-full px-4 py-3 rounded-xl border-2 ${
+                          editingProfile
+                            ? "border-gray-300 focus:border-blue-500"
+                            : "border-gray-200 bg-gray-50"
+                        } focus:outline-none`}
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-sm font-semibold text-gray-700 mb-2"
+                        style={{ fontFamily: "Montserrat, sans-serif" }}
+                      >
+                        Lokasi Perusahaan
+                      </label>
+                      <input
+                        type="text"
+                        value={profileData.city}
+                        placeholder="Isi dengan kota/provinsi tempat perusahaan Anda"
+                        onChange={(e) =>
+                          handleProfileUpdate("city", e.target.value)
                         }
                         disabled={!editingProfile}
                         className={`w-full px-4 py-3 rounded-xl border-2 ${
@@ -911,7 +1007,7 @@ const UserDashboard = () => {
                         style={{ fontFamily: "Open Sans, sans-serif" }}
                       />
                       <p className="text-xs text-gray-500 mt-1">
-                        Pisahkan dengan koma untuk multiple products
+                        Pisahkan dengan koma untuk produk yang lebih dari satu
                       </p>
                     </div>
                     <div>
@@ -981,7 +1077,7 @@ const UserDashboard = () => {
                         className="text-gray-600 mb-0"
                         style={{ fontFamily: "Open Sans, sans-serif" }}
                       >
-                        Histori Kemitraan IKM Belum Terisi
+                        Belum Ada Data Histori Kemitraan dengan IKM
                       </p>
                     </div>
                   ) : (
@@ -1144,9 +1240,16 @@ const UserDashboard = () => {
                       Batal
                     </button>
                     <button
-                      onClick={() => {
-                        setEditingProfile(false);
-                        alert("Profil berhasil diperbarui!");
+                      onClick={async () => {
+                        try {
+                          await saveProfileToFirestore();
+                          setEditingProfile(false);
+                          alert("Profil berhasil diperbarui!");
+                        } catch (err) {
+                          alert(
+                            "Gagal menyimpan profil. Silakan coba lagi atau hubungi admin."
+                          );
+                        }
                       }}
                       className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -1285,22 +1388,21 @@ const UserDashboard = () => {
                   className="text-2xl font-bold text-gray-800 mb-6"
                   style={{ fontFamily: "Poppins, sans-serif" }}
                 >
-                  Tambah Kemitraan Manual
+                  Tambah Kemitraan Baru
                 </h2>
                 <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-6 text-white">
                   <p
                     className="text-blue-50 mb-4"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    Sudah memiliki kemitraan dengan IKM yang belum terdaftar di
-                    platform? Tambahkan secara manual untuk dokumentasi dan
-                    tracking.
+                    Tambahkan data kemitraan baru Anda dengan IKM yang telah
+                    terdaftar untuk dokumentasi dan tracking.
                   </p>
                   <button
                     onClick={() => setShowManualPartnershipModal(true)}
                     className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition"
                   >
-                    + Tambah Kemitraan Manual
+                    + Tambah Kemitraan Baru
                   </button>
                 </div>
               </div>
@@ -1513,286 +1615,470 @@ const UserDashboard = () => {
               </div>
             </div>
           )}
-        </div>
 
-        {/* Manual Partnership Modal */}
-        {showManualPartnershipModal && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowManualPartnershipModal(false)}
-          >
-            <div
-              className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 rounded-t-2xl">
-                <div className="flex justify-between items-center">
-                  <h2
-                    className="text-2xl font-bold"
-                    style={{ fontFamily: "Poppins, sans-serif" }}
-                  >
-                    Tambah Kemitraan Manual
-                  </h2>
-                  <button
-                    onClick={() => setShowManualPartnershipModal(false)}
-                    className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              <form
-                className="p-6 space-y-6"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.target);
-                  const payload = {
-                    ikmName: formData.get("ikmName"),
-                    product: formData.get("product"),
-                    startDate: formData.get("startDate"),
-                    // Capture duration from the form; keep orderCount/totalValue
-                    // with sensible defaults for compatibility with existing UI.
-                    duration: formData.get("duration") || "",
-                    orderCount: 0,
-                    totalValue: "",
-                    lastOrder: "-",
-                    rating: 0,
-                  };
-                  try {
-                    if (manualPartnershipTarget === "history") {
-                      await handleAddHistoryPartnership(payload);
-                    } else {
-                      await handleAddManualPartnership(payload);
-                    }
-                    setShowManualPartnershipModal(false);
-                    alert(
-                      "Data kemitraan sudah tersimpan. Terima kasih sudah mengisi."
-                    );
-                  } catch (err) {
-                    console.error("Error saving manual partnership:", err);
-                    alert(
-                      "Terjadi kesalahan saat menyimpan data. Silakan coba lagi."
-                    );
-                  }
-                }}
+          {/* IKM Favorit Tab */}
+          {activeTab === "favorites" && (
+            <div>
+              <h1
+                className="text-3xl font-bold text-gray-800 mb-8"
+                style={{ fontFamily: "Poppins, sans-serif" }}
               >
-                {/* IKM Name */}
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Nama IKM <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="ikmName"
-                    placeholder="Contoh: CV Furniture Jaya Abadi"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                    required
-                  />
+                IKM Favorit Saya
+              </h1>
+              {loadingFavorites ? (
+                <div className="text-center py-12 text-gray-500">
+                  Memuat data IKM favorit...
                 </div>
-
-                {/* Product/Service */}
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Produk/Layanan <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="product"
-                    placeholder="Contoh: Meja dan Kursi Kantor"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                    required
-                  />
-                </div>
-
-                {/* Start Date */}
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Tanggal Mulai Kemitraan{" "}
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                    required
-                  />
-                </div>
-
-                {/* Durasi Kemitraan (replaces order count / total value inputs) */}
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Durasi Kemitraan (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    name="duration"
-                    placeholder="Contoh: 6 bulan"
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                  />
-                </div>
-
-                {/* (Removed last order date input; duration above replaces it) */}
-
-                {/* Info Box */}
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              ) : favoritedIkmList.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Heart className="w-10 h-10 text-gray-400" />
+                  </div>
                   <p
-                    className="text-blue-800 text-sm"
+                    className="text-gray-600"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    ℹ️ Data kemitraan manual akan disimpan untuk keperluan
-                    dokumentasi dan tracking.
+                    Belum ada IKM yang difavoritkan
                   </p>
                 </div>
-
-                {/* Submit Buttons */}
-                <div className="flex space-x-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualPartnershipModal(false)}
-                    className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
-                    style={{ fontFamily: "Montserrat, sans-serif" }}
-                  >
-                    Simpan Kemitraan
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Photo Upload Modal */}
-        {showPhotoModal && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowPhotoModal(false)}
-          >
-            <div
-              className="bg-white rounded-2xl max-w-lg w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Unggah Foto Profil</h2>
-                <button
-                  onClick={() => setShowPhotoModal(false)}
-                  className="text-gray-600 hover:bg-gray-100 rounded-full p-2"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4">
-                Unggah foto profil Anda. Format yang disarankan: JPG/PNG, ukuran
-                maksimal 2MB.
-              </p>
-
-              <div className="space-y-4">
-                <div className="border-dashed border-2 border-gray-200 rounded-lg p-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center text-gray-500">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-6 h-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M7 16V4m0 0L3 8m4-4 4 4M17 8v8a4 4 0 01-4 4H7"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        Pilih Foto Profil
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Format JPG/PNG. Maksimal 2MB.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <label className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer hover:bg-blue-700">
-                      Pilih File
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoFileChange}
-                        className="hidden"
-                      />
-                    </label>
-                    <div className="text-sm text-gray-700">
-                      {photoFile ? (
-                        <span className="font-medium">{photoFile.name}</span>
-                      ) : (
-                        <span className="text-gray-400">
-                          Belum ada file dipilih
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {favoritedIkmList.map((ikm) => (
+                    <div
+                      key={ikm.id}
+                      className="bg-white rounded-2xl shadow-lg p-6 flex flex-col"
+                    >
+                      <div className="flex items-center space-x-4 mb-4">
+                        <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-2xl overflow-hidden">
+                          {ikm.logo ? (
+                            <img
+                              src={ikm.logo}
+                              alt={ikm.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) =>
+                                (e.currentTarget.style.display = "none")
+                              }
+                            />
+                          ) : (
+                            <span role="img" aria-label="logo">
+                              🏭
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h2
+                            className="text-lg font-bold text-gray-800"
+                            style={{ fontFamily: "Poppins, sans-serif" }}
+                          >
+                            {ikm.name}
+                          </h2>
+                          <p className="text-sm text-gray-500">
+                            {ikm.location || "-"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Produk:
+                        </span>{" "}
+                        <span className="text-sm">
+                          {ikm.products ? ikm.products.join(", ") : "-"}
                         </span>
-                      )}
+                      </div>
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Layanan:
+                        </span>{" "}
+                        <span className="text-sm">
+                          {ikm.services ? ikm.services.join(", ") : "-"}
+                        </span>
+                      </div>
+                      <div className="mt-auto flex justify-end">
+                        <button
+                          className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition"
+                          onClick={() => setSelectedIkmForModal(ikm)}
+                        >
+                          Lihat Profil
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Modal for IKM detail */}
+              {selectedIkmForModal && (
+                <div
+                  className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                  onClick={() => setSelectedIkmForModal(null)}
+                >
+                  <div
+                    className="bg-white rounded-2xl max-w-2xl w-full p-8 relative"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className="absolute top-4 right-4 text-gray-500 hover:bg-gray-100 rounded-full p-2"
+                      onClick={() => setSelectedIkmForModal(null)}
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                    <div className="flex items-center space-x-6 mb-6">
+                      <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-4xl overflow-hidden">
+                        {selectedIkmForModal.logo ? (
+                          <img
+                            src={selectedIkmForModal.logo}
+                            alt={selectedIkmForModal.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) =>
+                              (e.currentTarget.style.display = "none")
+                            }
+                          />
+                        ) : (
+                          <span role="img" aria-label="logo">
+                            🏭
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h2
+                          className="text-2xl font-bold text-gray-800"
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        >
+                          {selectedIkmForModal.name}
+                        </h2>
+                        <p className="text-gray-500">
+                          {selectedIkmForModal.location || "-"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <span className="text-xs font-semibold text-gray-600">
+                        Produk:
+                      </span>{" "}
+                      <span className="text-sm">
+                        {selectedIkmForModal.products
+                          ? selectedIkmForModal.products.join(", ")
+                          : "-"}
+                      </span>
+                    </div>
+                    <div className="mb-4">
+                      <span className="text-xs font-semibold text-gray-600">
+                        Layanan:
+                      </span>{" "}
+                      <span className="text-sm">
+                        {selectedIkmForModal.services
+                          ? selectedIkmForModal.services.join(", ")
+                          : "-"}
+                      </span>
+                    </div>
+                    <div className="mb-4">
+                      <span className="text-xs font-semibold text-gray-600">
+                        Sertifikasi:
+                      </span>{" "}
+                      <span className="text-sm">
+                        {selectedIkmForModal.certifications
+                          ? selectedIkmForModal.certifications.join(", ")
+                          : "-"}
+                      </span>
+                    </div>
+                    <div className="sticky bottom-0 bg-white pt-4 flex justify-end">
+                      <a
+                        href={`mailto:${selectedIkmForModal.email}`}
+                        className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-700 transition mr-2"
+                      >
+                        Email untuk Bermitra
+                      </a>
+                      <button
+                        className="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-300 transition"
+                        onClick={() => setSelectedIkmForModal(null)}
+                      >
+                        Tutup
+                      </button>
                     </div>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
 
-                {photoFile && (
-                  <div className="border rounded-lg p-3 mt-4">
-                    <p className="text-sm font-semibold">Preview:</p>
-                    <img
-                      src={URL.createObjectURL(photoFile)}
-                      alt="preview"
-                      className="mt-2 max-h-48 object-contain"
+          {/* Manual Partnership Modal */}
+          {showManualPartnershipModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowManualPartnershipModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 rounded-t-2xl">
+                  <div className="flex justify-between items-center">
+                    <h2
+                      className="text-2xl font-bold"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Tambah Kemitraan Manual
+                    </h2>
+                    <button
+                      onClick={() => setShowManualPartnershipModal(false)}
+                      className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                <form
+                  className="p-6 space-y-6"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const payload = {
+                      ikmName: formData.get("ikmName"),
+                      product: formData.get("product"),
+                      startDate: formData.get("startDate"),
+                      // Capture duration from the form; keep orderCount/totalValue
+                      // with sensible defaults for compatibility with existing UI.
+                      duration: formData.get("duration") || "",
+                      orderCount: 0,
+                      totalValue: "",
+                      lastOrder: "-",
+                      rating: 0,
+                    };
+                    try {
+                      if (manualPartnershipTarget === "history") {
+                        await handleAddHistoryPartnership(payload);
+                      } else {
+                        await handleAddManualPartnership(payload);
+                      }
+                      setShowManualPartnershipModal(false);
+                      alert(
+                        "Data kemitraan sudah tersimpan. Terima kasih sudah mengisi."
+                      );
+                    } catch (err) {
+                      console.error("Error saving manual partnership:", err);
+                      alert(
+                        "Terjadi kesalahan saat menyimpan data. Silakan coba lagi."
+                      );
+                    }
+                  }}
+                >
+                  {/* IKM Name */}
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Nama IKM <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="ikmName"
+                      placeholder="Contoh: CV Furniture Jaya Abadi"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      required
                     />
                   </div>
-                )}
 
-                <div className="flex justify-end space-x-3">
+                  {/* Product/Service */}
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Produk/Layanan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="product"
+                      placeholder="Contoh: Meja dan Kursi Kantor"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      required
+                    />
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Tanggal Mulai Kemitraan{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      required
+                    />
+                  </div>
+
+                  {/* Durasi Kemitraan (replaces order count / total value inputs) */}
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Durasi Kemitraan (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      name="duration"
+                      placeholder="Contoh: 6 bulan"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    />
+                  </div>
+
+                  {/* (Removed last order date input; duration above replaces it) */}
+
+                  {/* Info Box */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p
+                      className="text-blue-800 text-sm"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    >
+                      ℹ️ Data kemitraan manual akan disimpan untuk keperluan
+                      dokumentasi dan tracking.
+                    </p>
+                  </div>
+
+                  {/* Submit Buttons */}
+                  <div className="flex space-x-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowManualPartnershipModal(false)}
+                      className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Simpan Kemitraan
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Photo Upload Modal */}
+          {showPhotoModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowPhotoModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl max-w-lg w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold">Unggah Foto Profil</h2>
                   <button
-                    onClick={() => {
-                      setPhotoFile(null);
-                      setShowPhotoModal(false);
-                    }}
-                    className="px-4 py-2 bg-gray-200 rounded-lg"
+                    onClick={() => setShowPhotoModal(false)}
+                    className="text-gray-600 hover:bg-gray-100 rounded-full p-2"
                   >
-                    Batal
+                    <X className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={handleUploadProfilePhoto}
-                    disabled={uploadingPhoto}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg"
-                  >
-                    {uploadingPhoto ? "Mengunggah..." : "Unggah Foto"}
-                  </button>
+                </div>
+
+                <p className="text-sm text-gray-600 mb-4">
+                  Unggah foto profil Anda. Format yang disarankan: JPG/PNG,
+                  ukuran maksimal 2MB.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="border-dashed border-2 border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gray-100 rounded-md flex items-center justify-center text-gray-500">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-6 h-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 16V4m0 0L3 8m4-4 4 4M17 8v8a4 4 0 01-4 4H7"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          Pilih Foto Profil
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Format JPG/PNG. Maksimal 2MB.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <label className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer hover:bg-blue-700">
+                        Pilih File
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <div className="text-sm text-gray-700">
+                        {photoFile ? (
+                          <span className="font-medium">{photoFile.name}</span>
+                        ) : (
+                          <span className="text-gray-400">
+                            Belum ada file dipilih
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {photoFile && (
+                    <div className="border rounded-lg p-3 mt-4">
+                      <p className="text-sm font-semibold">Preview:</p>
+                      <img
+                        src={URL.createObjectURL(photoFile)}
+                        alt="preview"
+                        className="mt-2 max-h-48 object-contain"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={() => {
+                        setPhotoFile(null);
+                        setShowPhotoModal(false);
+                      }}
+                      className="px-4 py-2 bg-gray-200 rounded-lg"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      onClick={handleUploadProfilePhoto}
+                      disabled={uploadingPhoto}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+                    >
+                      {uploadingPhoto ? "Mengunggah..." : "Unggah Foto"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <Footer />
     </div>

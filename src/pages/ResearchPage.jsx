@@ -704,8 +704,8 @@ const ResearchPage = () => {
         {activeTab === "feed" && showFilters && (
           <div className="bg-white shadow-md py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -727,7 +727,7 @@ const ResearchPage = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
@@ -771,7 +771,7 @@ const ResearchPage = () => {
                     ))}
                   </select>
                 </div>
-                <div>
+                {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -788,7 +788,7 @@ const ResearchPage = () => {
                     <option value="popular">Populer</option>
                     <option value="downloads">Paling Banyak Diunduh</option>
                   </select>
-                </div>
+                </div> */}
               </div>
               <div className="flex justify-center space-x-4 mt-6">
                 <button

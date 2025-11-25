@@ -553,7 +553,7 @@ const IKMDirectoryPage = () => {
             </div>
 
             {/* Filter Toggle Button (Mobile) */}
-            <div className="text-center mt-6">
+            {/* <div className="text-center mt-6">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition inline-flex items-center space-x-2"
@@ -568,17 +568,17 @@ const IKMDirectoryPage = () => {
                   <Menu className="w-5 h-5" />
                 )}
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
         {/* Filters Section */}
-        {showFilters && (
+        {/* {showFilters && (
           <div className="bg-white shadow-md py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {/* Category Filter */}
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4"> */}
+        {/* Category Filter */}
+        {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -597,9 +597,9 @@ const IKMDirectoryPage = () => {
                       </option>
                     ))}
                   </select>
-                </div>
-                {/* Location Filter */}
-                <div>
+                </div> */}
+        {/* Location Filter */}
+        {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -618,10 +618,10 @@ const IKMDirectoryPage = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
 
-                {/* Service Type Filter */}
-                <div>
+        {/* Service Type Filter */}
+        {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -640,10 +640,10 @@ const IKMDirectoryPage = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
 
-                {/* Certification Filter */}
-                <div>
+        {/* Certification Filter */}
+        {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -662,10 +662,10 @@ const IKMDirectoryPage = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div> */}
 
-                {/* Rating Filter */}
-                <div>
+        {/* Rating Filter */}
+        {/* <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -684,10 +684,10 @@ const IKMDirectoryPage = () => {
                     <option value={4.7}>4.7+ Bintang</option>
                   </select>
                 </div>
-              </div>
+              </div> */}
 
-              {/* Filter Actions */}
-              <div className="flex justify-center space-x-4 mt-6">
+        {/* Filter Actions */}
+        {/* <div className="flex justify-center space-x-4 mt-6">
                 <button
                   onClick={applyFilters}
                   className="bg-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
@@ -702,10 +702,10 @@ const IKMDirectoryPage = () => {
                 >
                   Reset Filter
                 </button>
-              </div>
-            </div>
+              </div> */}
+        {/* </div>
           </div>
-        )}
+        )} */}
 
         {/* Results Count */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -1086,7 +1086,19 @@ const IKMDirectoryPage = () => {
                       className="text-2xl font-bold text-yellow-600"
                       style={{ fontFamily: "Poppins, sans-serif" }}
                     >
-                      {selectedIkm?.partnerships || 0}
+                      {(() => {
+                        const verified = Array.isArray(
+                          selectedIkm?.verifiedPartnerships
+                        )
+                          ? selectedIkm.verifiedPartnerships.length
+                          : 0;
+                        const company = Array.isArray(
+                          selectedIkm?.companyPartnerships
+                        )
+                          ? selectedIkm.companyPartnerships.length
+                          : 0;
+                        return verified + company;
+                      })()}
                     </p>
                     <p
                       className="text-sm text-gray-600"
@@ -1658,6 +1670,206 @@ const IKMDirectoryPage = () => {
                         </span>
                       ))}
                   </div>
+                </div>
+
+                {/* Partnership History */}
+                <div>
+                  <h3
+                    className="text-xl font-bold text-gray-800 mb-4"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Histori Kemitraan
+                  </h3>
+                  {(() => {
+                    const verifiedPartnerships = Array.isArray(
+                      selectedIkm.verifiedPartnerships
+                    )
+                      ? selectedIkm.verifiedPartnerships
+                      : [];
+                    const companyPartnerships = Array.isArray(
+                      selectedIkm.companyPartnerships
+                    )
+                      ? selectedIkm.companyPartnerships
+                      : [];
+
+                    const totalPartnerships =
+                      verifiedPartnerships.length + companyPartnerships.length;
+
+                    if (totalPartnerships === 0) {
+                      return (
+                        <p
+                          className="text-gray-500 italic"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        >
+                          Belum ada data histori kemitraan
+                        </p>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {/* Verified Partnerships - More Prominent */}
+                        {verifiedPartnerships.length > 0 && (
+                          <div>
+                            <h4
+                              className="text-lg font-bold text-green-700 mb-3 flex items-center"
+                              style={{ fontFamily: "Montserrat, sans-serif" }}
+                            >
+                              <span className="w-3 h-3 bg-green-600 rounded-full mr-2"></span>
+                              Kemitraan Terverifikasi (
+                              {verifiedPartnerships.length})
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {verifiedPartnerships.map((partnership, idx) => (
+                                <div
+                                  key={`verified-${idx}`}
+                                  className="bg-linear-to-br from-green-50 to-green-100 border-2 border-green-400 rounded-xl p-4 hover:shadow-lg transition"
+                                >
+                                  <div className="flex items-start mb-2">
+                                    <span className="text-lg mr-2">✅</span>
+                                    <div className="flex-1">
+                                      <p
+                                        className="font-bold text-green-800"
+                                        style={{
+                                          fontFamily: "Montserrat, sans-serif",
+                                        }}
+                                      >
+                                        {partnership.requestedBy?.companyName ||
+                                          partnership.partnerName ||
+                                          partnership.companyName ||
+                                          "Mitra"}
+                                      </p>
+                                      {partnership.product && (
+                                        <p
+                                          className="text-sm text-green-700 mt-1"
+                                          style={{
+                                            fontFamily: "Open Sans, sans-serif",
+                                          }}
+                                        >
+                                          <span className="font-semibold">
+                                            Produk:
+                                          </span>{" "}
+                                          {partnership.product}
+                                        </p>
+                                      )}
+                                      {partnership.startDate && (
+                                        <p
+                                          className="text-xs text-green-600 mt-1"
+                                          style={{
+                                            fontFamily: "Open Sans, sans-serif",
+                                          }}
+                                        >
+                                          <span className="font-semibold">
+                                            Mulai:
+                                          </span>{" "}
+                                          {new Date(
+                                            partnership.startDate
+                                          ).toLocaleDateString("id-ID")}
+                                        </p>
+                                      )}
+                                      {partnership.duration && (
+                                        <p
+                                          className="text-xs text-green-600"
+                                          style={{
+                                            fontFamily: "Open Sans, sans-serif",
+                                          }}
+                                        >
+                                          <span className="font-semibold">
+                                            Durasi:
+                                          </span>{" "}
+                                          {partnership.duration}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Company Partnerships - Historical */}
+                        {companyPartnerships.length > 0 && (
+                          <div>
+                            <h4
+                              className="text-lg font-bold text-gray-700 mb-3 flex items-center"
+                              style={{ fontFamily: "Montserrat, sans-serif" }}
+                            >
+                              <span className="w-3 h-3 bg-gray-600 rounded-full mr-2"></span>
+                              Histori Kemitraan Perusahaan (
+                              {companyPartnerships.length})
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {companyPartnerships.map((partnership, idx) => (
+                                <div
+                                  key={`company-${idx}`}
+                                  className="bg-linear-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-xl p-4 hover:shadow-lg transition"
+                                >
+                                  <div className="flex items-start mb-2">
+                                    <span className="text-lg mr-2">📋</span>
+                                    <div className="flex-1">
+                                      <p
+                                        className="font-bold text-gray-800"
+                                        style={{
+                                          fontFamily: "Montserrat, sans-serif",
+                                        }}
+                                      >
+                                        {partnership.requestedBy?.companyName ||
+                                          partnership.partnerName ||
+                                          partnership.companyName ||
+                                          "Mitra"}
+                                      </p>
+                                      {partnership.product && (
+                                        <p
+                                          className="text-sm text-gray-700 mt-1"
+                                          style={{
+                                            fontFamily: "Open Sans, sans-serif",
+                                          }}
+                                        >
+                                          <span className="font-semibold">
+                                            Produk:
+                                          </span>{" "}
+                                          {partnership.product}
+                                        </p>
+                                      )}
+                                      {partnership.startDate && (
+                                        <p
+                                          className="text-xs text-gray-600 mt-1"
+                                          style={{
+                                            fontFamily: "Open Sans, sans-serif",
+                                          }}
+                                        >
+                                          <span className="font-semibold">
+                                            Mulai:
+                                          </span>{" "}
+                                          {new Date(
+                                            partnership.startDate
+                                          ).toLocaleDateString("id-ID")}
+                                        </p>
+                                      )}
+                                      {partnership.duration && (
+                                        <p
+                                          className="text-xs text-gray-600"
+                                          style={{
+                                            fontFamily: "Open Sans, sans-serif",
+                                          }}
+                                        >
+                                          <span className="font-semibold">
+                                            Durasi:
+                                          </span>{" "}
+                                          {partnership.duration}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Product/Service Detail Popup */}

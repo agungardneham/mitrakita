@@ -91,14 +91,15 @@ const UserDirectoryPage = () => {
               ? [String(data.needs)]
               : [],
             location: data.city || data.location || data.address || "",
-            partnershipCount:
-              typeof data.partnershipCount === "number"
-                ? data.partnershipCount
-                : Array.isArray(data.partnerships)
-                ? data.partnerships.length
-                : Array.isArray(data.partnershipHistory)
+            partnershipCount: (() => {
+              const historyCount = Array.isArray(data.partnershipHistory)
                 ? data.partnershipHistory.length
-                : 0,
+                : 0;
+              const verifiedCount = Array.isArray(data.verifiedPartnerships)
+                ? data.verifiedPartnerships.length
+                : 0;
+              return historyCount + verifiedCount;
+            })(),
             verified: !!data.verified,
             partnershipHistory: Array.isArray(data.partnershipHistory)
               ? data.partnershipHistory.map((p) => ({
@@ -109,6 +110,26 @@ const UserDirectoryPage = () => {
                 }))
               : Array.isArray(data.partnership_history)
               ? data.partnership_history.map((p) => ({
+                  ikmName: p.ikmName || p.ikm_name || p.partnerName || "",
+                  product: p.product || p.productName || p.service || "",
+                  startDate: p.startDate || p.start_date || p.date || "",
+                  duration: p.duration || p.durationText || "",
+                }))
+              : [],
+            verifiedPartnerships: Array.isArray(data.verifiedPartnerships)
+              ? data.verifiedPartnerships.map((p) => ({
+                  partnerName:
+                    p.partnerName ||
+                    p.companyName ||
+                    p.ikmName ||
+                    p.ikm_name ||
+                    "",
+                  companyName:
+                    p.companyName ||
+                    p.partnerName ||
+                    p.ikmName ||
+                    p.ikm_name ||
+                    "",
                   ikmName: p.ikmName || p.ikm_name || p.partnerName || "",
                   product: p.product || p.productName || p.service || "",
                   startDate: p.startDate || p.start_date || p.date || "",
@@ -231,7 +252,7 @@ const UserDirectoryPage = () => {
             </div>
 
             {/* Filter Toggle Button */}
-            <div className="text-center mt-6">
+            {/* <div className="text-center mt-6">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition inline-flex items-center space-x-2"
@@ -246,7 +267,7 @@ const UserDirectoryPage = () => {
                   <Menu className="w-5 h-5" />
                 )}
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -658,7 +679,7 @@ const UserDirectoryPage = () => {
                     <div className="flex items-center">
                       <Users className="w-4 h-4 mr-2 text-gray-600" />
                       <span className="text-gray-700">
-                        {selectedUser.partnershipCount} Kemitraan Aktif
+                        {selectedUser.partnershipCount} Kemitraan
                       </span>
                     </div>
                   </div>
@@ -763,46 +784,114 @@ const UserDirectoryPage = () => {
                   </div>
                 </div>
                 {/* Histori Kemitraan dengan IKM */}
-                <div className="bg-white rounded-2xl border-2 border-gray-200 p-6">
-                  <h3
-                    className="text-lg font-bold text-gray-800 mb-4"
-                    style={{ fontFamily: "Poppins, sans-serif" }}
-                  >
-                    Histori Kemitraan dengan IKM
-                  </h3>
-                  {selectedUser.partnershipHistory &&
-                  selectedUser.partnershipHistory.length ? (
-                    <ul className="space-y-3">
-                      {selectedUser.partnershipHistory.map((p, i) => (
-                        <li
-                          key={i}
-                          className="p-3 border rounded-lg bg-gray-50"
-                        >
-                          <div className="font-semibold text-gray-800">
-                            {p.ikmName || "-"}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Produk: {p.product || "-"}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Mulai:{" "}
-                            {p.startDate
-                              ? isNaN(Date.parse(p.startDate))
-                                ? p.startDate
-                                : new Date(p.startDate).toLocaleDateString(
-                                    "id-ID"
-                                  )
-                              : "-"}{" "}
-                            • Durasi: {p.duration || "-"}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      Belum ada histori kemitraan aktif.
-                    </p>
-                  )}
+                <div className="space-y-6">
+                  {/* Verified Partnerships - More Prominent */}
+                  <div className="bg-linear-to-br from-green-50 to-green-100 rounded-2xl border-2 border-green-400 p-6">
+                    <h3
+                      className="text-lg font-bold text-green-700 mb-4 flex items-center"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      <span className="w-3 h-3 bg-green-600 rounded-full mr-2"></span>
+                      Kemitraan Terverifikasi
+                    </h3>
+                    {Array.isArray(selectedUser.verifiedPartnerships) &&
+                    selectedUser.verifiedPartnerships.length > 0 ? (
+                      <ul className="space-y-3">
+                        {selectedUser.verifiedPartnerships.map((p, i) => (
+                          <li
+                            key={`verified-${i}`}
+                            className="p-4 bg-white border-2 border-green-300 rounded-xl shadow-md hover:shadow-lg transition"
+                          >
+                            <div className="flex items-start mb-2">
+                              <span className="text-xl mr-2">✅</span>
+                              <div className="flex-1">
+                                <div className="font-bold text-green-800">
+                                  {p.partnerName ||
+                                    p.companyName ||
+                                    p.ikmName ||
+                                    "-"}
+                                </div>
+                                <div className="text-sm text-green-700 mt-1">
+                                  <span className="font-semibold">Produk:</span>{" "}
+                                  {p.product || "-"}
+                                </div>
+                                <div className="text-xs text-green-600 mt-1 space-y-1">
+                                  {p.startDate && (
+                                    <div>
+                                      <span className="font-semibold">
+                                        Mulai:
+                                      </span>{" "}
+                                      {isNaN(Date.parse(p.startDate))
+                                        ? p.startDate
+                                        : new Date(
+                                            p.startDate
+                                          ).toLocaleDateString("id-ID")}
+                                    </div>
+                                  )}
+                                  {p.duration && (
+                                    <div>
+                                      <span className="font-semibold">
+                                        Durasi:
+                                      </span>{" "}
+                                      {p.duration}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-green-600 italic">
+                        Belum ada kemitraan terverifikasi.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Partnership History - Historical */}
+                  <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-2xl border-2 border-blue-300 p-6">
+                    <h3
+                      className="text-lg font-bold text-blue-700 mb-4 flex items-center"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      <span className="w-3 h-3 bg-blue-600 rounded-full mr-2"></span>
+                      Histori Kemitraan Perusahaan
+                    </h3>
+                    {selectedUser.partnershipHistory &&
+                    selectedUser.partnershipHistory.length > 0 ? (
+                      <ul className="space-y-3">
+                        {selectedUser.partnershipHistory.map((p, i) => (
+                          <li
+                            key={`history-${i}`}
+                            className="p-3 border border-blue-200 rounded-lg bg-white"
+                          >
+                            <div className="font-semibold text-blue-800">
+                              {p.ikmName || "-"}
+                            </div>
+                            <div className="text-sm text-blue-600 mt-1">
+                              Produk: {p.product || "-"}
+                            </div>
+                            <div className="text-sm text-blue-500 mt-1">
+                              Mulai:{" "}
+                              {p.startDate
+                                ? isNaN(Date.parse(p.startDate))
+                                  ? p.startDate
+                                  : new Date(p.startDate).toLocaleDateString(
+                                      "id-ID"
+                                    )
+                                : "-"}{" "}
+                              • Durasi: {p.duration || "-"}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-blue-600 italic">
+                        Belum ada histori kemitraan perusahaan.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 

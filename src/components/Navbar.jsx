@@ -40,20 +40,22 @@ const Navbar = ({ onNavigate }) => {
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link
-            to="/"
-            className="flex items-center cursor-pointer"
-            onClick={() => onNavigate?.("home")}
-          >
-            <img
-              src={logo}
-              alt="MitraKita logo"
-              className="w-50 h-auto object-contain"
-              loading="lazy"
-            />
-          </Link>
+        <div className="flex items-center h-16">
+          {/* Mobile: Logo di tengah, menu di kanan */}
+          <div className="flex flex-1 items-center md:justify-start justify-center">
+            <Link
+              to="/"
+              className="flex items-center cursor-pointer"
+              onClick={() => onNavigate?.("home")}
+            >
+              <img
+                src={logo}
+                alt="MitraKita logo"
+                className="w-40 h-auto object-contain mx-auto md:mx-0"
+                loading="lazy"
+              />
+            </Link>
+          </div>
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
             <Link
@@ -133,16 +135,18 @@ const Navbar = ({ onNavigate }) => {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-gray-700"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
-          </button>
+          <div className="md:hidden flex items-center">
+            <button
+              className="text-gray-700"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

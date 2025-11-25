@@ -287,19 +287,19 @@ const AboutUsPage = () => {
     },
     {
       icon: <FileText className="w-8 h-8" />,
-      title: "Repository Penelitian",
+      title: "Repositori Penelitian",
       description:
-        "Kumpulan hasil penelitian akademis dengan fitur AI summarization yang memudahkan IKM menemukan inovasi dan teknologi terbaru",
+        "Kumpulan hasil penelitian akademis dengan fitur ringkasan AI yang memudahkan IKM menemukan inovasi dan teknologi terbaru",
     },
     {
       icon: <Star className="w-8 h-8" />,
-      title: "Rating & Feedback System",
+      title: "Sistem Rating (Menyusul)",
       description:
         "Mekanisme penilaian dan ulasan yang membangun kepercayaan serta mendorong peningkatan kualitas layanan berkelanjutan",
     },
     {
       icon: <CheckCircle className="w-8 h-8" />,
-      title: "Admin Verification",
+      title: "Verifikasi Admin (Menyusul)",
       description:
         "Semua konten melalui proses kurasi dan verifikasi ketat untuk menjamin kredibilitas dan keamanan seluruh pengguna platform",
     },
@@ -757,17 +757,11 @@ const AboutUsPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 to="/register"
-                className="inline-block bg-white text-green-600 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
+                className="bg-yellow-400 text-gray-800 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >
                 Daftar Sekarang
               </Link>
-              <button
-                className="bg-yellow-400 text-gray-800 px-10 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl transition-all hover:scale-105"
-                style={{ fontFamily: "Montserrat, sans-serif" }}
-              >
-                Hubungi Kami
-              </button>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Search,
@@ -25,6 +25,81 @@ import Footer from "../components/Footer";
 
 const HomePage = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState([
+    { number: "0", label: "IKM Terdaftar" },
+    { number: "0", label: "Produk & Layanan Tersedia" },
+    { number: "0", label: "Kemitraan Sukses" },
+    { number: "0", label: "Penelitian" },
+  ]);
+
+  // Fetch dynamic stats from Firestore
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { getFirestore, collection, getDocs, query, where } =
+          await import("firebase/firestore");
+        const db = getFirestore();
+
+        // Count IKM (users with role "ikm")
+        const ikmQuery = query(
+          collection(db, "users"),
+          where("role", "==", "ikm")
+        );
+        const ikmSnapshot = await getDocs(ikmQuery);
+        const ikmCount = ikmSnapshot.size;
+
+        // Count products and services
+        let productCount = 0;
+        let serviceCount = 0;
+        let verifiedPartnershipCount = 0;
+        ikmSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (Array.isArray(data.products)) {
+            productCount += data.products.length;
+          }
+          if (Array.isArray(data.services)) {
+            serviceCount += data.services.length;
+          }
+          if (Array.isArray(data.verifiedPartnerships)) {
+            verifiedPartnershipCount += data.verifiedPartnerships.length;
+          }
+        });
+        const totalProductsServices = productCount + serviceCount;
+
+        // Count researches (users with role "academician" and researches array)
+        const academicianQuery = query(
+          collection(db, "users"),
+          where("role", "==", "academician")
+        );
+        const academicianSnapshot = await getDocs(academicianQuery);
+        let researchCount = 0;
+        academicianSnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (Array.isArray(data.researches)) {
+            researchCount += data.researches.length;
+          }
+        });
+
+        // Update stats
+        setStats([
+          { number: ikmCount.toString(), label: "IKM Terdaftar" },
+          {
+            number: totalProductsServices.toString(),
+            label: "Produk & Layanan Tersedia",
+          },
+          {
+            number: verifiedPartnershipCount.toString(),
+            label: "Kemitraan Sukses",
+          },
+          { number: researchCount.toString(), label: "Penelitian" },
+        ]);
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const features = [
     {
@@ -37,27 +112,20 @@ const HomePage = ({ onNavigate }) => {
       icon: <FileText className="w-8 h-8 text-yellow-600" />,
       title: "Hasil Penelitian",
       description:
-        "Akses repository penelitian akademis dengan ringkasan AI untuk inovasi industri",
+        "Akses repositori penelitian akademis dengan ringkasan AI untuk inovasi industri",
     },
     {
       icon: <Star className="w-8 h-8 text-yellow-500" />,
-      title: "Rating & Review",
+      title: "Rating & Review (Menyusul)",
       description:
         "Sistem penilaian untuk membangun kepercayaan dan kualitas kemitraan",
     },
     {
       icon: <CheckCircle className="w-8 h-8 text-blue-600" />,
-      title: "Verifikasi Admin",
+      title: "Verifikasi Admin (Menyusul)",
       description:
         "Semua konten diverifikasi oleh admin untuk menjamin kualitas dan keamanan",
     },
-  ];
-
-  const stats = [
-    { number: "1,250+", label: "IKM Terdaftar" },
-    { number: "3,400+", label: "Produk Tersedia" },
-    { number: "580+", label: "Kemitraan Sukses" },
-    { number: "150+", label: "Penelitian" },
   ];
 
   return (
@@ -80,23 +148,6 @@ const HomePage = ({ onNavigate }) => {
               >
                 Platform Kemitraan Digital untuk IKM Indonesia
               </p>
-
-              {/* Search Bar */}
-              <div className="max-w-2xl mx-auto">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Cari IKM, produk, atau layanan..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-6 py-4 rounded-2xl text-gray-800 shadow-2xl focus:outline-none focus:ring-4 focus:ring-yellow-400"
-                    style={{ fontFamily: "Open Sans, sans-serif" }}
-                  />
-                  <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-green-600 text-white p-3 rounded-xl hover:bg-green-700 transition">
-                    <Search className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
 
               {/* CTA Buttons */}
               <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
@@ -218,7 +269,7 @@ const HomePage = ({ onNavigate }) => {
                   className="text-gray-600"
                   style={{ fontFamily: "Open Sans, sans-serif" }}
                 >
-                  Buat akun dan lengkapi informasi bisnis Anda untuk verifikasi
+                  Buat akun dan lengkapi informasi bisnis Anda
                 </p>
               </div>
               <div className="text-center">
@@ -235,7 +286,7 @@ const HomePage = ({ onNavigate }) => {
                   className="text-gray-600"
                   style={{ fontFamily: "Open Sans, sans-serif" }}
                 >
-                  Jelajahi database dan mulai komunikasi dengan mitra potensial
+                  Jelajahi direktori dan mulai komunikasi dengan mitra potensial
                 </p>
               </div>
               <div className="text-center">
@@ -252,7 +303,7 @@ const HomePage = ({ onNavigate }) => {
                   className="text-gray-600"
                   style={{ fontFamily: "Open Sans, sans-serif" }}
                 >
-                  Bangun kemitraan, track progress, dan kembangkan bisnis Anda
+                  Bangun kemitraan dan kembangkan bisnis Anda
                 </p>
               </div>
             </div>

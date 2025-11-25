@@ -47,6 +47,7 @@ const AcademicianDashboard = () => {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // untuk sidebar mobile
 
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -444,8 +445,16 @@ const AcademicianDashboard = () => {
   return (
     <div>
       <Navbar userRole="academician" />
+      {/* Tombol menu untuk mobile */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 bg-white rounded-full shadow-lg p-2 flex items-center justify-center"
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Buka menu sidebar"
+      >
+        <Menu className="w-6 h-6 text-blue-600" />
+      </button>
       <div className="flex min-h-screen bg-green-50">
-        {/* Sidebar */}
+        {/* Sidebar Desktop */}
         <div className="w-64 bg-white shadow-lg hidden md:block">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-2">
@@ -513,6 +522,96 @@ const AcademicianDashboard = () => {
           </nav>
         </div>
 
+        {/* Sidebar Mobile Drawer */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 flex">
+            {/* Overlay */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-40"
+              onClick={() => setSidebarOpen(false)}
+            ></div>
+            {/* Drawer */}
+            <div className="relative w-64 bg-white shadow-xl h-full flex flex-col transform transition-transform duration-300 translate-x-0">
+              <button
+                className="absolute top-4 right-4 bg-gray-100 rounded-full p-2"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Tutup sidebar"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+              <div className="p-6 pt-12">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-12 h-12 bg-white rounded-xl overflow-hidden flex items-center justify-center">
+                    {profileData?.photo &&
+                    typeof profileData.photo === "string" &&
+                    (profileData.photo.startsWith("http") ||
+                      profileData.photo.startsWith("data:")) ? (
+                      <img
+                        src={profileData.photo}
+                        alt="Profil"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span className="text-2xl">
+                        {profileData?.photo || "👨‍🔬"}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h2
+                      className="text-lg font-bold text-gray-800"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Dashboard Akademisi
+                    </h2>
+                  </div>
+                </div>
+                <p
+                  className="text-sm text-gray-600"
+                  style={{ fontFamily: "Open Sans, sans-serif" }}
+                >
+                  {profileData.frontDegree} {profileData.academicianName}{" "}
+                  {profileData.backDegree}
+                </p>
+              </div>
+              <nav className="px-4">
+                {sidebarItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl mb-2 transition-all ${
+                      activeTab === item.id
+                        ? "bg-blue-600 text-white shadow-lg"
+                        : "text-gray-700 hover:bg-blue-50"
+                    }`}
+                    style={{ fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={async () => {
+                    await logout();
+                    navigate("/");
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all mt-8 font-semibold"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Keluar</span>
+                </button>
+              </nav>
+            </div>
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="flex-1 p-8 overflow-y-auto">
           {/* Overview Tab */}
@@ -565,16 +664,6 @@ const AcademicianDashboard = () => {
                   <h3 className="text-2xl font-bold text-gray-800 mb-1">5</h3>
                   <p className="text-gray-600 text-sm">Pesan</p>
                 </div> */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <TrendingUp className="w-8 h-8 text-purple-600" />
-                    <span className="text-purple-600 text-sm font-semibold">
-                      +15%
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-1">342</h3>
-                  <p className="text-gray-600 text-sm">Total Views</p>
-                </div>
               </div>
 
               {/* Pending Partnership Requests */}
@@ -651,7 +740,7 @@ const AcademicianDashboard = () => {
                 >
                   Aksi Cepat
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <button
                     onClick={() => setActiveTab("profile")}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
@@ -668,7 +757,7 @@ const AcademicianDashboard = () => {
                     </p>
                   </button>
                   <button
-                    onClick={() => setShowResearchModal(true)}
+                    onClick={() => setActiveTab("research")}
                     className="bg-gradient-to-r from-green-600 to-green-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
                     <FileText className="w-8 h-8 mb-3" />
@@ -695,6 +784,21 @@ const AcademicianDashboard = () => {
                     </h3>
                     <p className="text-sm text-yellow-50">
                       Review permintaan dari IKM
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("favorites")}
+                    className="bg-gradient-to-r from-red-500 to-red-400 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
+                  >
+                    <Users className="w-8 h-8 mb-3" />
+                    <h3
+                      className="font-bold mb-1"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      IKM Favorit
+                    </h3>
+                    <p className="text-sm text-yellow-50">
+                      Lihat IKM yang Anda favoritkan
                     </p>
                   </button>
                 </div>

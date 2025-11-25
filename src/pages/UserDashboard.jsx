@@ -19,6 +19,7 @@ import {
   Settings,
   LogOut,
   Heart,
+  HeartHandshakeIcon,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -31,11 +32,13 @@ import { supabase } from "../supabaseClient";
 // ============================================
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Untuk sidebar mobile
   const [editingProfile, setEditingProfile] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [showManualPartnershipModal, setShowManualPartnershipModal] =
     useState(false);
+  const [showNewPartnershipModal, setShowNewPartnershipModal] = useState(false);
   const [manualPartnershipTarget, setManualPartnershipTarget] =
     useState("active");
 
@@ -98,6 +101,201 @@ const UserDashboard = () => {
   const [selectedIkmForModal, setSelectedIkmForModal] = useState(null);
   const [selectedDetail, setSelectedDetail] = useState(null);
 
+  // New Partnership IKM Search State
+  const [ikmSearchQuery, setIkmSearchQuery] = useState("");
+  const [ikmSearchResults, setIkmSearchResults] = useState([]);
+  const [ikmSearchLoading, setIkmSearchLoading] = useState(false);
+  const [selectedIkm, setSelectedIkm] = useState(null);
+
+  // Pending Partnership Requests State (belum diverifikasi IKM)
+  const [pendingPartnershipRequests, setPendingPartnershipRequests] = useState(
+    []
+  );
+  const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
+
+  // Verified Partnerships State (sudah diverifikasi IKM)
+  const [verifiedPartnerships, setVerifiedPartnerships] = useState([]);
+  const [loadingVerifiedPartnerships, setLoadingVerifiedPartnerships] =
+    useState(false);
+
+  // New Partnership Requests from IKM State (permintaan dari IKM)
+  const [newPartnershipRequests, setNewPartnershipRequests] = useState([]);
+
+  // Deduplicate incoming/outgoing requests for display (avoid double render)
+  const dedupKey = (r) => {
+    if (!r) return "";
+    // Build a composite key using initiator + ikm + target + product + startDate
+    const initiator =
+      (r.initiatedBy && r.initiatedBy.uid) ||
+      (r.requestedBy && r.requestedBy.uid) ||
+      "";
+    const ikmId = r.ikmId || "";
+    const targetUid =
+      (r.targetUser && r.targetUser.uid) ||
+      (r.requestedTo && r.requestedTo.uid) ||
+      "";
+    const product = r.product || "";
+    const start = r.startDate || "";
+    const created = r.createdAt ? `::${String(r.createdAt)}` : "";
+    return `${initiator}::${ikmId}::${targetUid}::${product}::${start}${created}`;
+  };
+
+  const dedupedNewPartnershipRequests = React.useMemo(() => {
+    if (!Array.isArray(newPartnershipRequests)) return [];
+    const seen = new Set();
+    return newPartnershipRequests.filter((r) => {
+      const k = dedupKey(r);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [newPartnershipRequests]);
+
+  const dedupedPendingPartnershipRequests = React.useMemo(() => {
+    if (!Array.isArray(pendingPartnershipRequests)) return [];
+    const seen = new Set();
+    // Seed seen with keys from deduped incoming requests so we don't show same item twice
+    (dedupedNewPartnershipRequests || []).forEach((r) => seen.add(dedupKey(r)));
+    return pendingPartnershipRequests.filter((r) => {
+      const k = dedupKey(r);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [pendingPartnershipRequests, dedupedNewPartnershipRequests]);
+
+  // Load pending partnership requests dan verified partnerships dari Firestore
+  useEffect(() => {
+    if (!user) return;
+    setLoadingPendingRequests(true);
+    setLoadingVerifiedPartnerships(true);
+
+    let unsub = null;
+
+    (async () => {
+      try {
+        const { getFirestore, doc, onSnapshot } = await import(
+          "firebase/firestore"
+        );
+        const db = getFirestore();
+        const userDocRef = doc(db, "users", user.uid);
+
+        unsub = onSnapshot(
+          userDocRef,
+          (snap) => {
+            if (!snap.exists()) {
+              setPendingPartnershipRequests([]);
+              setVerifiedPartnerships([]);
+              setNewPartnershipRequests([]);
+              setLoadingPendingRequests(false);
+              setLoadingVerifiedPartnerships(false);
+              return;
+            }
+            const data = snap.data() || {};
+            if (
+              Array.isArray(data.pendingPartnerships) &&
+              data.pendingPartnerships.length > 0
+            ) {
+              setPendingPartnershipRequests(data.pendingPartnerships);
+            } else if (data.newPartnership) {
+              // backward-compat: include single-field entries
+              setPendingPartnershipRequests([data.newPartnership]);
+            } else {
+              setPendingPartnershipRequests([]);
+            }
+
+            if (Array.isArray(data.verifiedPartnerships)) {
+              setVerifiedPartnerships(data.verifiedPartnerships);
+            } else {
+              setVerifiedPartnerships([]);
+            }
+
+            if (Array.isArray(data.newPartnershipRequests)) {
+              setNewPartnershipRequests(data.newPartnershipRequests);
+            } else {
+              setNewPartnershipRequests([]);
+            }
+
+            setLoadingPendingRequests(false);
+            setLoadingVerifiedPartnerships(false);
+          },
+          (error) => {
+            console.error("Realtime partnership listener error:", error);
+            setLoadingPendingRequests(false);
+            setLoadingVerifiedPartnerships(false);
+          }
+        );
+      } catch (err) {
+        console.error("Error setting up partnership listener:", err);
+        setLoadingPendingRequests(false);
+        setLoadingVerifiedPartnerships(false);
+      }
+    })();
+
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [user]);
+
+  // Debounced search for IKM (searches users with role 'ikm')
+  useEffect(() => {
+    let mounted = true;
+    const q = ikmSearchQuery && ikmSearchQuery.trim();
+    if (!q || q.length < 2) {
+      setIkmSearchResults([]);
+      setIkmSearchLoading(false);
+      return;
+    }
+
+    setIkmSearchLoading(true);
+    const handler = setTimeout(async () => {
+      try {
+        const {
+          getFirestore,
+          collection,
+          query: firestoreQuery,
+          where,
+          getDocs,
+        } = await import("firebase/firestore");
+        const db = getFirestore();
+        const qref = firestoreQuery(
+          collection(db, "users"),
+          where("role", "==", "ikm")
+        );
+        const snap = await getDocs(qref);
+        const results = [];
+        const needle = q.toLowerCase();
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const candidates = [
+            data.companyName,
+            data.businessName,
+            data.name,
+            data.fullName,
+          ]
+            .filter(Boolean)
+            .map((s) => String(s).toLowerCase());
+          if (candidates.some((c) => c.includes(needle))) {
+            results.push({ id: docSnap.id, ...data });
+          }
+        });
+        if (mounted) {
+          setIkmSearchResults(results.slice(0, 10));
+        }
+      } catch (e) {
+        console.error("IKM search error:", e);
+        if (mounted) setIkmSearchResults([]);
+      } finally {
+        if (mounted) setIkmSearchLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      mounted = false;
+      clearTimeout(handler);
+    };
+  }, [ikmSearchQuery]);
+
   // Handle select file for upload
   const handlePhotoFileChange = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -155,11 +353,6 @@ const UserDashboard = () => {
       id: "profile",
       label: "Edit Profil",
       icon: <Building2 className="w-5 h-5" />,
-    },
-    {
-      id: "ikm-directory",
-      label: "Cari IKM",
-      icon: <Search className="w-5 h-5" />,
     },
     {
       id: "partnerships",
@@ -454,6 +647,90 @@ const UserDashboard = () => {
     }
   };
 
+  // Handle accept IKM-initiated partnership request
+  const handleAcceptIKMPartnershipRequest = async (request, index) => {
+    if (!user) return;
+
+    try {
+      const { getFirestore, doc, updateDoc, arrayUnion, arrayRemove } =
+        await import("firebase/firestore");
+      const db = getFirestore();
+
+      // Prepare verified partnership object
+      const verifiedPartnershipObj = {
+        ikmId: request.ikmId,
+        ikmName: request.ikmName,
+        product: request.product,
+        startDate: request.startDate,
+        duration: request.duration,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Update user's verified partnerships + remove from newPartnershipRequests
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        verifiedPartnerships: arrayUnion(verifiedPartnershipObj),
+        newPartnershipRequests: arrayRemove(request),
+      });
+
+      // Update IKM's verified partnerships + remove from pendingPartnerships
+      const ikmDocRef = doc(db, "users", request.ikmId);
+      await updateDoc(ikmDocRef, {
+        verifiedPartnerships: arrayUnion(verifiedPartnershipObj),
+        pendingPartnerships: arrayRemove(request),
+      });
+
+      // Optimistic update
+      setNewPartnershipRequests((prev) =>
+        prev.filter(
+          (_, i) => !(i === index && prev[i].initiatedBy?.uid !== user.uid)
+        )
+      );
+      setVerifiedPartnerships((prev) => [...prev, verifiedPartnershipObj]);
+
+      alert("Kemitraan diterima!");
+    } catch (err) {
+      console.error("Error accepting partnership:", err);
+      alert("Gagal menerima kemitraan");
+    }
+  };
+
+  // Handle reject IKM-initiated partnership request
+  const handleRejectIKMPartnershipRequest = async (request, index) => {
+    if (!user) return;
+
+    try {
+      const { getFirestore, doc, updateDoc, arrayRemove } = await import(
+        "firebase/firestore"
+      );
+      const db = getFirestore();
+
+      // Remove from user's newPartnershipRequests
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        newPartnershipRequests: arrayRemove(request),
+      });
+
+      // Remove from IKM's pendingPartnerships
+      const ikmDocRef = doc(db, "users", request.ikmId);
+      await updateDoc(ikmDocRef, {
+        pendingPartnerships: arrayRemove(request),
+      });
+
+      // Optimistic update
+      setNewPartnershipRequests((prev) =>
+        prev.filter(
+          (_, i) => !(i === index && prev[i].initiatedBy?.uid !== user.uid)
+        )
+      );
+
+      alert("Permintaan kemitraan ditolak");
+    } catch (err) {
+      console.error("Error rejecting partnership:", err);
+      alert("Gagal menolak kemitraan");
+    }
+  };
+
   const mergedPartnerships = React.useMemo(() => {
     const ids = new Set(partnershipHistory.map((h) => h.id));
     const activeNotInHistory = activePartnerships.filter((a) => !ids.has(a.id));
@@ -506,8 +783,16 @@ const UserDashboard = () => {
   return (
     <div>
       <Navbar userRole="industry" />
+      {/* Tombol menu untuk mobile */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-999 bg-white rounded-full shadow-lg p-2 flex items-center justify-center"
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Buka menu sidebar"
+      >
+        <Menu className="w-6 h-6 text-blue-600" />
+      </button>
       <div className="flex min-h-screen bg-green-50">
-        {/* Sidebar */}
+        {/* Sidebar Desktop */}
         <div className="w-64 bg-white shadow-lg hidden md:block">
           <div className="p-6">
             <div className="flex items-center space-x-3 mb-2">
@@ -520,7 +805,6 @@ const UserDashboard = () => {
                     alt="avatar"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // hide broken image; fallback will show below
                       e.currentTarget.style.display = "none";
                     }}
                   />
@@ -573,6 +857,92 @@ const UserDashboard = () => {
             </button>
           </nav>
         </div>
+
+        {/* Sidebar Mobile Drawer */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 flex">
+            {/* Overlay */}
+            <div
+              className="fixed inset-0 bg-black bg-opacity-40"
+              onClick={() => setSidebarOpen(false)}
+            ></div>
+            {/* Drawer dengan animasi fallback */}
+            <div className="relative w-64 bg-white shadow-xl h-full flex flex-col transform transition-transform duration-300 translate-x-0">
+              <button
+                className="absolute top-4 right-4 bg-gray-100 rounded-full p-2"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Tutup sidebar"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+              <div className="p-6 pt-12">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center text-2xl overflow-hidden">
+                    {typeof profileData.photo === "string" &&
+                    (profileData.photo.indexOf("http") === 0 ||
+                      profileData.photo.indexOf("data:") === 0) ? (
+                      <img
+                        src={profileData.photo}
+                        alt="avatar"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span>{profileData.photo || "👨‍💼"}</span>
+                    )}
+                  </div>
+                  <div>
+                    <h2
+                      className="text-lg font-bold text-gray-800"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Dashboard User
+                    </h2>
+                  </div>
+                </div>
+                <p
+                  className="text-sm text-gray-600"
+                  style={{ fontFamily: "Open Sans, sans-serif" }}
+                >
+                  {profileData.companyName}
+                </p>
+              </div>
+              <nav className="px-4">
+                {sidebarItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl mb-2 transition-all ${
+                      activeTab === item.id
+                        ? "bg-blue-600 text-white shadow-lg"
+                        : "text-gray-700 hover:bg-blue-50"
+                    }`}
+                    style={{ fontFamily: "Montserrat, sans-serif" }}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={async () => {
+                    await logout();
+                    navigate("/");
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all mt-8 font-semibold"
+                  style={{ fontFamily: "Montserrat, sans-serif" }}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Keluar</span>
+                </button>
+              </nav>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="flex-1 p-8 overflow-y-auto">
@@ -701,23 +1071,8 @@ const UserDashboard = () => {
                     </p>
                   </button>
                   <button
-                    onClick={() => setActiveTab("ikm-directory")}
-                    className="bg-gradient-to-r from-green-600 to-green-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
-                  >
-                    <Search className="w-8 h-8 mb-3" />
-                    <h3
-                      className="font-bold mb-1"
-                      style={{ fontFamily: "Montserrat, sans-serif" }}
-                    >
-                      Cari IKM
-                    </h3>
-                    <p className="text-sm text-green-50">
-                      Temukan mitra potensial
-                    </p>
-                  </button>
-                  <button
                     onClick={() => setActiveTab("partnerships")}
-                    className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
+                    className="bg-gradient-to-r from-green-600 to-green-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
                     <Users className="w-8 h-8 mb-3" />
                     <h3
@@ -726,8 +1081,23 @@ const UserDashboard = () => {
                     >
                       Kelola Kemitraan
                     </h3>
+                    <p className="text-sm text-green-50">
+                      Review permintaan kemitraan
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("favorites")}
+                    className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
+                  >
+                    <HeartHandshakeIcon className="w-8 h-8 mb-3" />
+                    <h3
+                      className="font-bold mb-1"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      IKM Favorit
+                    </h3>
                     <p className="text-sm text-yellow-50">
-                      Review permintaan IKM
+                      Lihat IKM yang Anda favoritkan
                     </p>
                   </button>
                 </div>
@@ -1248,7 +1618,8 @@ const UserDashboard = () => {
                           await saveProfileToFirestore();
                           setEditingProfile(false);
                           alert("Profil berhasil diperbarui!");
-                        } catch (err) {
+                        } catch (e) {
+                          console.error("Failed to save profile:", e);
                           alert(
                             "Gagal menyimpan profil. Silakan coba lagi atau hubungi admin."
                           );
@@ -1276,7 +1647,7 @@ const UserDashboard = () => {
               </h1>
 
               {/* Pending Requests */}
-              <div className="mb-8">
+              {/* <div className="mb-8">
                 <div className="flex justify-between items-center mb-6">
                   <h2
                     className="text-2xl font-bold text-gray-800"
@@ -1383,7 +1754,7 @@ const UserDashboard = () => {
                     </p>
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Manual Partnership Entry */}
               <div className="mb-8">
@@ -1402,7 +1773,7 @@ const UserDashboard = () => {
                     terdaftar untuk dokumentasi dan tracking.
                   </p>
                   <button
-                    onClick={() => setShowManualPartnershipModal(true)}
+                    onClick={() => setShowNewPartnershipModal(true)}
                     className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition"
                   >
                     + Tambah Kemitraan Baru
@@ -1410,8 +1781,306 @@ const UserDashboard = () => {
                 </div>
               </div>
 
-              {/* Active Partnerships */}
+              {/* IKM-Initiated Partnership Requests (permintaan dari IKM) */}
               <div className="mb-8">
+                <h2
+                  className="text-2xl font-bold text-gray-800 mb-6"
+                  style={{ fontFamily: "Poppins, sans-serif" }}
+                >
+                  Permintaan Kemitraan dari IKM (
+                  {
+                    dedupedNewPartnershipRequests.filter(
+                      (req) =>
+                        req.initiatedBy && req.initiatedBy.uid !== user.uid
+                    ).length
+                  }
+                  )
+                </h2>
+
+                {loadingPendingRequests ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">Memuat data...</p>
+                  </div>
+                ) : dedupedNewPartnershipRequests.filter(
+                    (req) => req.initiatedBy && req.initiatedBy.uid !== user.uid
+                  ).length > 0 ? (
+                  <div className="space-y-4">
+                    {dedupedNewPartnershipRequests
+                      .filter(
+                        (req) =>
+                          req.initiatedBy && req.initiatedBy.uid !== user.uid
+                      )
+                      .map((request, index) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-400"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <h3
+                                  className="text-lg font-bold text-gray-800"
+                                  style={{ fontFamily: "Poppins, sans-serif" }}
+                                >
+                                  {request.ikmName}
+                                </h3>
+                                <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                  Ajuan dari IKM
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">
+                                <strong>Produk/Layanan:</strong>{" "}
+                                {request.product}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-2">
+                                <strong>Tanggal Mulai:</strong>{" "}
+                                {new Date(request.startDate).toLocaleDateString(
+                                  "id-ID"
+                                )}
+                              </p>
+                              {request.duration && (
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Durasi:</strong> {request.duration}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-3">
+                                Diajukan:{" "}
+                                {new Date(request.createdAt).toLocaleDateString(
+                                  "id-ID",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() =>
+                                handleAcceptIKMPartnershipRequest(
+                                  request,
+                                  index
+                                )
+                              }
+                              className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
+                            >
+                              ✓ Terima
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleRejectIKMPartnershipRequest(
+                                  request,
+                                  index
+                                )
+                              }
+                              className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition"
+                            >
+                              ✕ Tolak
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p
+                      className="text-gray-600"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    >
+                      Tidak ada permintaan kemitraan dari IKM
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Pending Partnership Requests (belum diverifikasi IKM) */}
+              <div className="mb-8">
+                <h2
+                  className="text-2xl font-bold text-gray-800 mb-6"
+                  style={{ fontFamily: "Poppins, sans-serif" }}
+                >
+                  Permintaan Kemitraan Menunggu Verifikasi (
+                  {dedupedPendingPartnershipRequests.length})
+                </h2>
+
+                {loadingPendingRequests ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">Memuat data...</p>
+                  </div>
+                ) : dedupedPendingPartnershipRequests.length > 0 ? (
+                  <div className="space-y-4">
+                    {dedupedPendingPartnershipRequests.map((request, index) => (
+                      <div
+                        key={index}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-400"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h3
+                                className="text-lg font-bold text-gray-800"
+                                style={{ fontFamily: "Poppins, sans-serif" }}
+                              >
+                                {request.ikmName}
+                              </h3>
+                              <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                Menunggu Verifikasi
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              <strong>Produk/Layanan:</strong> {request.product}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-2">
+                              <strong>Tanggal Mulai:</strong>{" "}
+                              {new Date(request.startDate).toLocaleDateString(
+                                "id-ID"
+                              )}
+                            </p>
+                            {request.duration && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                <strong>Durasi:</strong> {request.duration}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-3">
+                              Diajukan:{" "}
+                              {new Date(request.createdAt).toLocaleDateString(
+                                "id-ID",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="bg-blue-50 rounded-xl p-4">
+                          <p className="text-sm text-blue-800">
+                            <strong>ℹ️ Status:</strong> Permintaan ini telah
+                            dikirim ke IKM dan sedang menunggu verifikasi. Anda
+                            akan diberitahu ketika IKM merespons.
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p
+                      className="text-gray-600"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    >
+                      Tidak ada permintaan kemitraan yang menunggu verifikasi
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Verified Partnerships (Kemitraan Terverifikasi) */}
+              <div className="mb-8">
+                <h2
+                  className="text-2xl font-bold text-gray-800 mb-6"
+                  style={{ fontFamily: "Poppins, sans-serif" }}
+                >
+                  Kemitraan Terverifikasi ({verifiedPartnerships.length})
+                </h2>
+
+                {loadingVerifiedPartnerships ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">Memuat data...</p>
+                  </div>
+                ) : verifiedPartnerships.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {verifiedPartnerships.map((partnership, index) => (
+                      <div
+                        key={index}
+                        className="bg-white rounded-2xl shadow-lg p-6 border-t-4 border-green-400"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h3
+                                className="text-lg font-bold text-gray-800"
+                                style={{ fontFamily: "Poppins, sans-serif" }}
+                              >
+                                {partnership.ikmName}
+                              </h3>
+                              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold flex items-center">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Terverifikasi
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-3">
+                          <strong>Produk/Layanan:</strong> {partnership.product}
+                        </p>
+
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-500 mb-1">
+                              Tanggal Mulai
+                            </p>
+                            <p className="font-semibold text-gray-800">
+                              {new Date(
+                                partnership.startDate
+                              ).toLocaleDateString("id-ID")}
+                            </p>
+                          </div>
+                          {partnership.duration && (
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <p className="text-xs text-gray-500 mb-1">
+                                Durasi
+                              </p>
+                              <p className="font-semibold text-gray-800">
+                                {partnership.duration}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-gray-500 mb-4">
+                          Diverifikasi:{" "}
+                          {partnership.createdAt
+                            ? new Date(
+                                partnership.createdAt
+                              ).toLocaleDateString("id-ID", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "-"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p
+                      className="text-gray-600"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    >
+                      Belum ada kemitraan yang terverifikasi. Ajukan permintaan
+                      kemitraan baru untuk memulai.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Active Partnerships */}
+              {/* <div className="mb-8">
                 <h2
                   className="text-2xl font-bold text-gray-800 mb-6"
                   style={{ fontFamily: "Poppins, sans-serif" }}
@@ -1501,10 +2170,10 @@ const UserDashboard = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               {/* Completed Partnerships */}
-              <div>
+              {/* <div>
                 <h2
                   className="text-2xl font-bold text-gray-800 mb-6"
                   style={{ fontFamily: "Poppins, sans-serif" }}
@@ -1585,7 +2254,7 @@ const UserDashboard = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </div> */}
             </div>
           )}
 
@@ -2666,6 +3335,291 @@ const UserDashboard = () => {
               )}
             </div>
           )}
+          {/* New Partnership Modal (saves to users/{uid}.pendingPartnerships[]) */}
+          {showNewPartnershipModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowNewPartnershipModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 rounded-t-2xl">
+                  <div className="flex justify-between items-center">
+                    <h2
+                      className="text-2xl font-bold"
+                      style={{ fontFamily: "Poppins, sans-serif" }}
+                    >
+                      Tambah Kemitraan Baru
+                    </h2>
+                    <button
+                      onClick={() => setShowNewPartnershipModal(false)}
+                      className="text-white hover:bg-white hover:bg-opacity-20 rounded-xl p-2 transition"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
+
+                <form
+                  className="p-6 space-y-6"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!selectedIkm) {
+                      alert(
+                        "Silakan pilih IKM dari daftar saran sebelum menyimpan."
+                      );
+                      return;
+                    }
+                    const formData = new FormData(e.target);
+                    const payload = {
+                      ikmName:
+                        selectedIkm.companyName ||
+                        selectedIkm.businessName ||
+                        selectedIkm.name ||
+                        selectedIkm.fullName ||
+                        selectedIkm.id,
+                      ikmId: selectedIkm.id,
+                      product: formData.get("product"),
+                      startDate: formData.get("startDate"),
+                      duration: formData.get("duration") || "",
+                      orderCount: 0,
+                      totalValue: "",
+                      lastOrder: "-",
+                      rating: 0,
+                      createdAt: new Date().toISOString(),
+                    };
+                    try {
+                      if (!user) throw new Error("User not logged in");
+                      const { getFirestore, doc, setDoc, arrayUnion } =
+                        await import("firebase/firestore");
+                      const db = getFirestore();
+                      const userDocRef = doc(db, "users", user.uid);
+
+                      // Add user info to payload for IKM to see who requested
+                      const payloadWithUserInfo = {
+                        ...payload,
+                        requestedBy: {
+                          uid: user.uid,
+                          companyName:
+                            profileData.companyName || "Pengguna Industri",
+                          phoneNumber: profileData.phoneNumber || "",
+                          timestamp: new Date().toISOString(),
+                        },
+                      };
+
+                      // Save to user's pendingPartnerships array (allow multiple requests)
+                      await setDoc(
+                        userDocRef,
+                        {
+                          pendingPartnerships: arrayUnion(payloadWithUserInfo),
+                        },
+                        { merge: true }
+                      );
+
+                      // Also add to IKM's newPartnershipRequests array
+                      const ikmDocRef = doc(db, "users", selectedIkm.id);
+                      await setDoc(
+                        ikmDocRef,
+                        {
+                          newPartnershipRequests:
+                            arrayUnion(payloadWithUserInfo),
+                        },
+                        { merge: true }
+                      );
+
+                      // Optimistic update: reflect pending request immediately
+                      setPendingPartnershipRequests((prev) => [
+                        ...(Array.isArray(prev) ? prev : []),
+                        payloadWithUserInfo,
+                      ]);
+
+                      setShowNewPartnershipModal(false);
+                      // reset search state
+                      setIkmSearchQuery("");
+                      setIkmSearchResults([]);
+                      setSelectedIkm(null);
+                      alert(
+                        "Data kemitraan baru berhasil disimpan dan akan diverifikasi oleh IKM."
+                      );
+                    } catch (err) {
+                      console.error("Error saving newPartnership:", err);
+                      alert(
+                        "Gagal menyimpan data kemitraan. Silakan coba lagi."
+                      );
+                    }
+                  }}
+                >
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Nama IKM <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="ikmName"
+                        value={
+                          selectedIkm
+                            ? selectedIkm.companyName ||
+                              selectedIkm.businessName ||
+                              selectedIkm.name ||
+                              selectedIkm.fullName ||
+                              selectedIkm.id
+                            : ikmSearchQuery
+                        }
+                        onChange={(e) => {
+                          setIkmSearchQuery(e.target.value);
+                          setSelectedIkm(null);
+                        }}
+                        placeholder="Cari nama IKM (min 2 karakter)"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                        required
+                      />
+                      {/* Suggestions dropdown */}
+                      {ikmSearchLoading && (
+                        <div className="absolute left-0 right-0 mt-2 bg-white border rounded-xl p-3 text-sm text-gray-500">
+                          Mencari...
+                        </div>
+                      )}
+                      {!ikmSearchLoading &&
+                        ikmSearchResults.length > 0 &&
+                        !selectedIkm && (
+                          <div className="absolute left-0 right-0 mt-2 bg-white border rounded-xl shadow-lg z-20 max-h-64 overflow-auto">
+                            {ikmSearchResults.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedIkm(r);
+                                  setIkmSearchQuery("");
+                                  setIkmSearchResults([]);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-b-0"
+                              >
+                                <div className="font-semibold text-gray-800">
+                                  {r.companyName ||
+                                    r.businessName ||
+                                    r.name ||
+                                    r.fullName ||
+                                    r.id}
+                                </div>
+                                {r.officeAddress && (
+                                  <div className="text-xs text-gray-500">
+                                    {r.officeAddress}
+                                  </div>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      {!ikmSearchLoading &&
+                        ikmSearchResults.length === 0 &&
+                        ikmSearchQuery.length >= 2 &&
+                        !selectedIkm && (
+                          <div className="absolute left-0 right-0 mt-2 bg-white border rounded-xl p-3 text-sm text-gray-500">
+                            Tidak ditemukan.
+                          </div>
+                        )}
+                      {selectedIkm && (
+                        <div className="mt-2 flex items-center space-x-2">
+                          <div className="px-3 py-1 bg-green-50 text-green-800 rounded-full text-sm">
+                            Dipilih:{" "}
+                            {selectedIkm.companyName ||
+                              selectedIkm.businessName ||
+                              selectedIkm.name ||
+                              selectedIkm.fullName ||
+                              selectedIkm.id}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedIkm(null);
+                              setIkmSearchQuery("");
+                            }}
+                            className="text-sm text-gray-500 underline"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Produk/Layanan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="product"
+                      placeholder="Contoh: Meja dan Kursi Kantor"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Tanggal Mulai Kemitraan{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="block text-sm font-semibold text-gray-700 mb-2"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Durasi Kemitraan (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      name="duration"
+                      placeholder="Contoh: 6 bulan"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPartnershipModal(false)}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-semibold hover:shadow-lg transition"
+                    >
+                      Simpan Kemitraan
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* Manual Partnership Modal */}
           {showManualPartnershipModal && (
             <div

@@ -20,6 +20,7 @@ import {
   Settings,
   LogOut,
   Pencil,
+  ToolCase,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -529,10 +530,48 @@ const IKMDashboard = () => {
       const timestamp = Date.now();
       const fileName = `${user.uid}_${timestamp}_${logoFile.name}`;
 
-      // Upload to Supabase Storage
+      // If there's an existing logoUrl, try to remove the previous file from storage
+      if (profileData?.logoUrl) {
+        try {
+          const bucket = "ikm-profile-photos";
+          const marker = `/object/public/${bucket}/`;
+          let prevPath = null;
+          if (typeof profileData.logoUrl === "string") {
+            const idx = profileData.logoUrl.indexOf(marker);
+            if (idx !== -1) {
+              prevPath = profileData.logoUrl.substring(idx + marker.length);
+            } else {
+              // fallback to last path segment
+              prevPath = profileData.logoUrl.split("/").pop();
+            }
+          }
+
+          if (prevPath) {
+            const { error: removeError } = await supabase.storage
+              .from(bucket)
+              .remove([prevPath]);
+            if (removeError) {
+              // Not fatal: just log and continue with upload
+              console.warn(
+                "Failed to remove previous logo from storage:",
+                removeError
+              );
+            } else {
+              console.info("Previous logo removed from storage:", prevPath);
+            }
+          }
+        } catch (remErr) {
+          console.warn(
+            "Error while attempting to remove previous logo:",
+            remErr
+          );
+        }
+      }
+
+      // Upload to Supabase Storage (use upsert to be safe)
       const { error } = await supabase.storage
         .from("ikm-profile-photos")
-        .upload(fileName, logoFile);
+        .upload(fileName, logoFile, { upsert: true });
 
       if (error) {
         console.error("Upload error:", error);
@@ -752,7 +791,7 @@ const IKMDashboard = () => {
     {
       id: "services",
       label: "Layanan",
-      icon: <Settings className="w-5 h-5" />,
+      icon: <ToolCase className="w-5 h-5" />,
     },
     {
       id: "partnerships",
@@ -2189,9 +2228,6 @@ const IKMDashboard = () => {
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Package className="w-8 h-8 text-green-600" />
-                    <span className="text-green-600 text-sm font-semibold">
-                      +12%
-                    </span>
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800 mb-1">
                     {profileData.products?.length || 0}
@@ -2201,9 +2237,6 @@ const IKMDashboard = () => {
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Settings className="w-8 h-8 text-blue-600" />
-                    <span className="text-blue-600 text-sm font-semibold">
-                      +5%
-                    </span>
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800 mb-1">
                     {profileData.services?.length || 0}
@@ -2221,6 +2254,109 @@ const IKMDashboard = () => {
                   <p className="text-gray-600 text-sm">Rating Rata-rata</p>
                 </div> */}
               </div>
+              {/* Pending Partnership Requests */}
+              {(loadingPartnerships || newPartnershipRequests.length > 0) && (
+                <div className="mb-12">
+                  <h2
+                    className="text-2xl font-bold text-gray-800 mb-6"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Permintaan Kemitraan Baru ({newPartnershipRequests.length})
+                  </h2>
+
+                  {loadingPartnerships ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">Memuat data...</p>
+                    </div>
+                  ) : newPartnershipRequests.length > 0 ? (
+                    <div className="space-y-4">
+                      {newPartnershipRequests.map((request, index) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded-2xl shadow-lg p-6"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex-1">
+                              <h3
+                                className="text-lg font-bold text-gray-800 mb-2"
+                                style={{ fontFamily: "Poppins, sans-serif" }}
+                              >
+                                Permintaan dari:{" "}
+                                {request.requestedBy?.companyName ||
+                                  "Pengguna Industri"}
+                              </h3>
+                              <p className="text-sm text-gray-600 mb-1">
+                                <strong>Produk/Layanan:</strong>{" "}
+                                {request.product}
+                              </p>
+                              <p className="text-sm text-gray-600 mb-1">
+                                <strong>Tanggal Mulai:</strong>{" "}
+                                {new Date(request.startDate).toLocaleDateString(
+                                  "id-ID"
+                                )}
+                              </p>
+                              {request.duration && (
+                                <p className="text-sm text-gray-600 mb-1">
+                                  <strong>Durasi:</strong> {request.duration}
+                                </p>
+                              )}
+                              {request.requestedBy?.phoneNumber && (
+                                <p className="text-sm text-gray-600">
+                                  <strong>Kontak:</strong>{" "}
+                                  {request.requestedBy.phoneNumber}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(request.createdAt).toLocaleDateString(
+                                "id-ID",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-3">
+                            <button
+                              onClick={() =>
+                                handleAcceptPartnership(request, index)
+                              }
+                              className="flex-1 bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition flex items-center justify-center space-x-2"
+                            >
+                              <CheckCircle className="w-5 h-5" />
+                              <span>Terima</span>
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleRejectPartnership(request, index)
+                              }
+                              className="flex-1 bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition flex items-center justify-center space-x-2"
+                            >
+                              <X className="w-5 h-5" />
+                              <span>Tolak</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p
+                        className="text-gray-600"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Tidak ada permintaan kemitraan baru
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
@@ -2230,7 +2366,7 @@ const IKMDashboard = () => {
                 >
                   Aksi Cepat
                 </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <button
                     onClick={() => setActiveTab("profile")}
                     className="bg-gradient-to-r from-green-600 to-green-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
@@ -2247,7 +2383,10 @@ const IKMDashboard = () => {
                     </p>
                   </button>
                   <button
-                    onClick={() => setShowMachineModal(true)}
+                    onClick={() => {
+                      setActiveTab("partnerships");
+                      setSidebarOpen(false);
+                    }}
                     className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
                     <Settings className="w-8 h-8 mb-3" />
@@ -2280,7 +2419,7 @@ const IKMDashboard = () => {
                     onClick={() => setShowServiceModal(true)}
                     className="bg-gradient-to-r from-green-600 to-green-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
-                    <Settings className="w-8 h-8 mb-3" />
+                    <ToolCase className="w-8 h-8 mb-3" />
                     <h3
                       className="font-bold mb-1"
                       style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -2289,6 +2428,23 @@ const IKMDashboard = () => {
                     </h3>
                     <p className="text-sm text-yellow-50">
                       Daftarkan layanan Anda
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("partnerships");
+                    }}
+                    className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
+                  >
+                    <Users className="w-8 h-8 mb-3" />
+                    <h3
+                      className="font-bold mb-1"
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Atur Kemitraan
+                    </h3>
+                    <p className="text-sm text-green-50">
+                      Update informasi kemitraan Anda
                     </p>
                   </button>
                 </div>

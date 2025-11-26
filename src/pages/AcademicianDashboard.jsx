@@ -200,11 +200,6 @@ const AcademicianDashboard = () => {
       icon: <FileText className="w-5 h-5" />,
     },
     {
-      id: "partnerships",
-      label: "Kemitraan IKM",
-      icon: <Users className="w-5 h-5" />,
-    },
-    {
       id: "favorites",
       label: "IKM Favorit",
       icon: <Heart className="w-5 h-5" />,
@@ -639,7 +634,7 @@ const AcademicianDashboard = () => {
                   </h3>
                   <p className="text-gray-600 text-sm">Penelitian</p>
                 </div>
-                <div className="bg-white rounded-2xl shadow-lg p-6">
+                {/* <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <Users className="w-8 h-8 text-green-600" />
                     <span className="text-green-600 text-sm font-semibold">
@@ -653,7 +648,7 @@ const AcademicianDashboard = () => {
                     }
                   </h3>
                   <p className="text-gray-600 text-sm">Kemitraan IKM</p>
-                </div>
+                </div> */}
                 {/* <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <MessageCircle className="w-8 h-8 text-yellow-600" />
@@ -740,7 +735,7 @@ const AcademicianDashboard = () => {
                 >
                   Aksi Cepat
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     onClick={() => setActiveTab("profile")}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
@@ -757,7 +752,7 @@ const AcademicianDashboard = () => {
                     </p>
                   </button>
                   <button
-                    onClick={() => setActiveTab("research")}
+                    onClick={openNewResearchModal}
                     className="bg-gradient-to-r from-green-600 to-green-500 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
                     <FileText className="w-8 h-8 mb-3" />
@@ -771,7 +766,7 @@ const AcademicianDashboard = () => {
                       Publikasikan hasil riset Anda
                     </p>
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => setActiveTab("partnerships")}
                     className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
@@ -785,10 +780,10 @@ const AcademicianDashboard = () => {
                     <p className="text-sm text-yellow-50">
                       Review permintaan dari IKM
                     </p>
-                  </button>
+                  </button> */}
                   <button
                     onClick={() => setActiveTab("favorites")}
-                    className="bg-gradient-to-r from-red-500 to-red-400 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
+                    className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-white p-6 rounded-xl hover:shadow-lg transition text-left"
                   >
                     <Users className="w-8 h-8 mb-3" />
                     <h3
@@ -901,9 +896,56 @@ const AcademicianDashboard = () => {
                                   try {
                                     const timestamp = Date.now();
                                     const fileName = `${user.uid}_${timestamp}_${photoFile.name}`;
+
+                                    // Try removing previous file (best-effort)
+                                    if (
+                                      profileData?.photo ||
+                                      profileData?.photoUrl
+                                    ) {
+                                      try {
+                                        const bucket =
+                                          "academician-profile-photos";
+                                        const marker = `/object/public/${bucket}/`;
+                                        let prevPath = null;
+                                        const prevUrl =
+                                          profileData.photoUrl ||
+                                          profileData.photo;
+                                        if (typeof prevUrl === "string") {
+                                          const idx = prevUrl.indexOf(marker);
+                                          if (idx !== -1) {
+                                            prevPath = prevUrl.substring(
+                                              idx + marker.length
+                                            );
+                                          } else {
+                                            prevPath = prevUrl.split("/").pop();
+                                          }
+                                        }
+                                        if (prevPath) {
+                                          const { error: removeError } =
+                                            await supabase.storage
+                                              .from(bucket)
+                                              .remove([prevPath]);
+                                          if (removeError) {
+                                            console.warn(
+                                              "Failed to remove previous academician photo:",
+                                              removeError
+                                            );
+                                          }
+                                        }
+                                      } catch (remErr) {
+                                        console.warn(
+                                          "Error removing previous academician photo:",
+                                          remErr
+                                        );
+                                      }
+                                    }
+
+                                    // Upload new file (use upsert to be safe)
                                     const { error } = await supabase.storage
                                       .from("academician-profile-photos")
-                                      .upload(fileName, photoFile);
+                                      .upload(fileName, photoFile, {
+                                        upsert: true,
+                                      });
                                     if (error) {
                                       console.error("Upload error:", error);
                                       alert(
@@ -919,7 +961,7 @@ const AcademicianDashboard = () => {
 
                                     const publicUrl = publicUrlData?.publicUrl;
 
-                                    // Save to Firestore
+                                    // Save to Firestore: write both photoUrl and photo for consistency
                                     const db = getFirestore();
                                     const userDocRef = doc(
                                       db,
@@ -928,14 +970,15 @@ const AcademicianDashboard = () => {
                                     );
                                     await setDoc(
                                       userDocRef,
-                                      { photoUrl: publicUrl },
+                                      { photoUrl: publicUrl, photo: publicUrl },
                                       { merge: true }
                                     );
 
-                                    // Update local state
+                                    // Update local state (force re-render with new URL)
                                     setProfileData((prev) => ({
                                       ...prev,
                                       photo: publicUrl,
+                                      photoUrl: publicUrl,
                                     }));
                                     setPhotoFile(null);
                                     setPhotoPreview(null);

@@ -316,9 +316,39 @@ const UserDashboard = () => {
     try {
       const fileExt = photoFile.name.split(".").pop();
       const fileName = `profile_${user.uid}_${Date.now()}.${fileExt}`;
+
+      // If existing photo present, try removing it first (best-effort)
+      if (profileData?.photo) {
+        try {
+          const bucket = "user-profile-photos";
+          const marker = `/object/public/${bucket}/`;
+          let prevPath = null;
+          if (typeof profileData.photo === "string") {
+            const idx = profileData.photo.indexOf(marker);
+            if (idx !== -1) {
+              prevPath = profileData.photo.substring(idx + marker.length);
+            } else {
+              prevPath = profileData.photo.split("/").pop();
+            }
+          }
+          if (prevPath) {
+            const { error: removeError } = await supabase.storage
+              .from(bucket)
+              .remove([prevPath]);
+            if (removeError)
+              console.warn(
+                "Failed to remove previous profile photo:",
+                removeError
+              );
+          }
+        } catch (remErr) {
+          console.warn("Error removing previous profile photo:", remErr);
+        }
+      }
+
       const { data, error: uploadError } = await supabase.storage
         .from("user-profile-photos")
-        .upload(fileName, photoFile, { cacheControl: "3600", upsert: false });
+        .upload(fileName, photoFile, { cacheControl: "3600", upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -524,9 +554,9 @@ const UserDashboard = () => {
         if (userSnap.exists()) {
           const data = userSnap.data();
           setProfileData((prev) => ({ ...prev, ...data }));
-          // load camelCase fields from Firestore (database uses camelCase)
-          const loadedActive = Array.isArray(data.activePartnerships)
-            ? data.activePartnerships
+          // load verifiedPartnerships from Firestore
+          const loadedActive = Array.isArray(data.verifiedPartnerships)
+            ? data.verifiedPartnerships
             : [];
           const loadedHistory = Array.isArray(data.partnershipHistory)
             ? data.partnershipHistory
@@ -973,78 +1003,128 @@ const UserDashboard = () => {
               </div>
 
               {/* Pending Partnership Requests */}
-              {/* {partnershipRequests.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+              {dedupedNewPartnershipRequests.filter(
+                (req) => req.initiatedBy && req.initiatedBy.uid !== user.uid
+              ).length > 0 && (
+                <div className="mb-8">
                   <h2
-                    className="text-xl font-bold text-gray-800 mb-6"
+                    className="text-2xl font-bold text-gray-800 mb-6"
                     style={{ fontFamily: "Poppins, sans-serif" }}
                   >
-                    Pengajuan Kemitraan dari IKM ({partnershipRequests.length})
+                    Permintaan Kemitraan dari IKM (
+                    {
+                      dedupedNewPartnershipRequests.filter(
+                        (req) =>
+                          req.initiatedBy && req.initiatedBy.uid !== user.uid
+                      ).length
+                    }
+                    )
                   </h2>
-                  <div className="space-y-4">
-                    {partnershipRequests.slice(0, 2).map((request) => (
-                      <div
-                        key={request.id}
-                        className="border-2 border-yellow-200 bg-yellow-50 rounded-xl p-4"
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3
-                              className="font-bold text-gray-800"
-                              style={{ fontFamily: "Montserrat, sans-serif" }}
-                            >
-                              {request.ikmName}
-                            </h3>
-                            <p
-                              className="text-sm text-gray-600"
-                              style={{ fontFamily: "Open Sans, sans-serif" }}
-                            >
-                              Produk: {request.product}
-                            </p>
+
+                  {loadingPendingRequests ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">Memuat data...</p>
+                    </div>
+                  ) : dedupedNewPartnershipRequests.filter(
+                      (req) =>
+                        req.initiatedBy && req.initiatedBy.uid !== user.uid
+                    ).length > 0 ? (
+                    <div className="space-y-4">
+                      {dedupedNewPartnershipRequests
+                        .filter(
+                          (req) =>
+                            req.initiatedBy && req.initiatedBy.uid !== user.uid
+                        )
+                        .map((request, index) => (
+                          <div
+                            key={index}
+                            className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-400"
+                          >
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h3
+                                    className="text-lg font-bold text-gray-800"
+                                    style={{
+                                      fontFamily: "Poppins, sans-serif",
+                                    }}
+                                  >
+                                    {request.ikmName}
+                                  </h3>
+                                  <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-semibold">
+                                    Ajuan dari IKM
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Produk/Layanan:</strong>{" "}
+                                  {request.product}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-2">
+                                  <strong>Tanggal Mulai:</strong>{" "}
+                                  {new Date(
+                                    request.startDate
+                                  ).toLocaleDateString("id-ID")}
+                                </p>
+                                {request.duration && (
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    <strong>Durasi:</strong> {request.duration}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-3">
+                                  Diajukan:{" "}
+                                  {new Date(
+                                    request.createdAt
+                                  ).toLocaleDateString("id-ID", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() =>
+                                  handleAcceptIKMPartnershipRequest(
+                                    request,
+                                    index
+                                  )
+                                }
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
+                              >
+                                ✓ Terima
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleRejectIKMPartnershipRequest(
+                                    request,
+                                    index
+                                  )
+                                }
+                                className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition"
+                              >
+                                ✕ Tolak
+                              </button>
+                            </div>
                           </div>
-                          <span className="text-xs text-gray-500">
-                            {request.requestDate}
-                          </span>
-                        </div>
-                        <p
-                          className="text-sm text-gray-700 mb-3"
-                          style={{ fontFamily: "Open Sans, sans-serif" }}
-                        >
-                          {request.description}
-                        </p>
-                        <div className="bg-white rounded-lg p-3 mb-4">
-                          <p className="text-xs text-gray-500 mb-1">
-                            Waktu Pengiriman yang Diusulkan
-                          </p>
-                          <p className="text-sm font-semibold text-gray-800">
-                            {request.deliveryTime}
-                          </p>
-                        </div>
-                        <div className="flex space-x-3">
-                          <button
-                            onClick={() =>
-                              handleVerifyPartnership(request.id, "approve")
-                            }
-                            className="flex-1 bg-green-600 text-white py-2 rounded-xl font-semibold hover:bg-green-700 transition"
-                            style={{ fontFamily: "Montserrat, sans-serif" }}
-                          >
-                            Terima
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleVerifyPartnership(request.id, "reject")
-                            }
-                            className="flex-1 bg-red-600 text-white py-2 rounded-xl font-semibold hover:bg-red-700 transition"
-                            style={{ fontFamily: "Montserrat, sans-serif" }}
-                          >
-                            Tolak
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                      <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p
+                        className="text-gray-600"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                      >
+                        Tidak ada permintaan kemitraan dari IKM
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )} */}
+              )}
 
               {/* Quick Actions */}
               <div className="bg-white rounded-2xl shadow-lg p-6">

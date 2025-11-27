@@ -73,8 +73,7 @@ const RegisterPage = () => {
       subtitle: "Industri Kecil dan Menengah",
       icon: <Building2 className="w-8 h-8" />,
       gradient: "from-green-600 to-green-500",
-      description:
-        "Daftarkan bisnis IKM Anda untuk bermitra dengan industri besar",
+      description: "Untuk pemilik usaha kecil dan menengah yang ingin bermitra",
     },
     {
       id: "user",
@@ -82,7 +81,7 @@ const RegisterPage = () => {
       subtitle: "Industri Pencari Mitra / User",
       icon: <Users className="w-8 h-8" />,
       gradient: "from-blue-600 to-blue-500",
-      description: "Cari dan hubungi IKM untuk kebutuhan produk dan layanan",
+      description: "Untuk industri atau pencari produk dan layanan IKM",
     },
     {
       id: "academician",
@@ -90,7 +89,7 @@ const RegisterPage = () => {
       subtitle: "Peneliti / Dosen",
       icon: <GraduationCap className="w-8 h-8" />,
       gradient: "from-yellow-500 to-yellow-400",
-      description: "Kolaborasi riset dan transfer teknologi dengan IKM",
+      description: "Untuk akademisi yang ingin berkolaborasi riset dengan IKM",
     },
   ];
 

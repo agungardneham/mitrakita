@@ -356,23 +356,6 @@ const LoginPage = ({ setUserRole }) => {
                   </p>
                 </div>
               </form>
-
-              {/* Demo Login Info */}
-              <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <p
-                  className="text-blue-800 text-xs font-semibold mb-2"
-                  style={{ fontFamily: "Montserrat, sans-serif" }}
-                >
-                  💡 Demo Mode
-                </p>
-                <p
-                  className="text-blue-700 text-xs"
-                  style={{ fontFamily: "Open Sans, sans-serif" }}
-                >
-                  Pilih peran dan masukkan email/password apa saja untuk mencoba
-                  dashboard
-                </p>
-              </div>
             </div>
           </div>
 

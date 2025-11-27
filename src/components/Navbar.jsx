@@ -87,7 +87,7 @@ const Navbar = ({ onNavigate }) => {
                 className="text-gray-700 hover:text-green-600 transition font-medium"
                 style={{ fontFamily: "Montserrat, sans-serif" }}
               >
-                Direktori Industri
+                Direktori Pengguna
               </Link>
             )}
             <Link
@@ -183,7 +183,7 @@ const Navbar = ({ onNavigate }) => {
                 onClick={() => setMobileMenuOpen(false)}
                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-green-50 rounded-xl transition"
               >
-                Direktori Industri
+                Direktori Pengguna
               </Link>
             )}
             <Link

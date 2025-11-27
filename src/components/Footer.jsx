@@ -18,7 +18,7 @@ const Footer = () => {
               style={{ fontFamily: "Open Sans, sans-serif" }}
             >
               Platform digital Kementerian Perindustrian RI untuk memfasilitasi
-              kemitraan antara IKM dengan industri besar dan akademisi.
+              kemitraan antara IKM dengan industri dan akademisi.
             </p>
           </div>
           <div>
@@ -57,10 +57,16 @@ const Footer = () => {
               Kementerian Perindustrian RI
             </p>
             <p
-              className="text-gray-400 text-sm"
+              className="text-gray-400 text-sm mb-2"
               style={{ fontFamily: "Open Sans, sans-serif" }}
             >
               Email: info@mitrakita.kemenperin.go.id
+            </p>
+            <p
+              className="text-gray-400 text-sm"
+              style={{ fontFamily: "Open Sans, sans-serif" }}
+            >
+              Telp: +62 859 1067 33311
             </p>
           </div>
         </div>

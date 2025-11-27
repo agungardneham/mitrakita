@@ -220,7 +220,7 @@ const UserDirectoryPage = () => {
               className="text-4xl md:text-5xl font-bold mb-4 text-center"
               style={{ fontFamily: "Poppins, sans-serif" }}
             >
-              Direktori Industri
+              Direktori Pengguna Umum
             </h1>
             <p
               className="text-xl text-center text-blue-50 mb-8"

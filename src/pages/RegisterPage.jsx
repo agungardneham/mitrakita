@@ -190,11 +190,13 @@ const RegisterPage = () => {
       const db = getFirestore();
       await setDoc(doc(db, "users", user.uid), userData);
 
-      // Success, redirect to login
-      alert(
-        "Pendaftaran berhasil! Silakan login dengan akun yang telah dibuat."
-      );
-      navigate("/login");
+      // Success, redirect to role-specific dashboard
+      alert("Pendaftaran berhasil! Mengarahkan ke dashboard...");
+      const dashboardPath =
+        selectedRole === "academician"
+          ? "/dashboard/akademisi"
+          : `/dashboard/${selectedRole}`;
+      navigate(dashboardPath);
     } catch (error) {
       setError(
         error.code === "auth/email-already-in-use"

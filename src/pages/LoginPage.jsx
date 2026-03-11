@@ -6,6 +6,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 const LoginPage = ({ setUserRole }) => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ const LoginPage = ({ setUserRole }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const roles = [
     {
@@ -74,7 +76,7 @@ const LoginPage = ({ setUserRole }) => {
       // Validate that selected role matches Firestore role
       if (roleFromDb && roleFromDb !== selectedRole) {
         throw new Error(
-          `Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih.`
+          `Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih.`,
         );
       }
 
@@ -103,22 +105,22 @@ const LoginPage = ({ setUserRole }) => {
         err.code === "auth/user-not-found"
       ) {
         setError(
-          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih."
+          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih.",
         );
       } else if (err.code === "auth/too-many-requests") {
         setError(
-          "Terlalu banyak percobaan login gagal. Silakan coba beberapa saat lagi."
+          "Terlalu banyak percobaan login gagal. Silakan coba beberapa saat lagi.",
         );
       } else if (err.code === "auth/operation-not-allowed") {
         setError(
-          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih."
+          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih.",
         );
       } else if (err.message && !err.code) {
         // Custom error messages (dari validasi role mismatch)
         setError(err.message);
       } else {
         setError(
-          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih."
+          "Login gagal. Pastikan email dan password sesuai dengan peran yang Anda pilih.",
         );
       }
     } finally {
@@ -129,7 +131,7 @@ const LoginPage = ({ setUserRole }) => {
   return (
     <div>
       <Navbar />
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-50 py-12 px-4">
+      <div className="min-h-screen bg-linear-to-br from-green-50 via-blue-50 to-green-50 py-12 px-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center mb-12">
@@ -169,7 +171,7 @@ const LoginPage = ({ setUserRole }) => {
                   >
                     <div className="flex items-start space-x-4">
                       <div
-                        className={`w-14 h-14 bg-gradient-to-br ${role.gradient} rounded-xl flex items-center justify-center text-white flex-shrink-0`}
+                        className={`w-14 h-14 bg-linear-to-br ${role.gradient} rounded-xl flex items-center justify-center text-white shrink-0`}
                       >
                         {role.icon}
                       </div>
@@ -194,7 +196,7 @@ const LoginPage = ({ setUserRole }) => {
                         </p>
                       </div>
                       {selectedRole === role.id && (
-                        <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
+                        <CheckCircle className="w-6 h-6 text-green-600 shrink-0" />
                       )}
                     </div>
                   </button>
@@ -303,7 +305,8 @@ const LoginPage = ({ setUserRole }) => {
                   </label>
                   <button
                     type="button"
-                    className="text-sm text-green-600 hover:text-green-700 font-semibold"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-sm text-green-600 hover:text-green-700 font-semibold transition"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
                     Lupa Password?
@@ -317,7 +320,7 @@ const LoginPage = ({ setUserRole }) => {
                   className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
                     !selectedRole || isLoading
                       ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-gradient-to-r from-green-600 to-green-500 text-white hover:shadow-xl hover:scale-105"
+                      : "bg-linear-to-r from-green-600 to-green-500 text-white hover:shadow-xl hover:scale-105"
                   }`}
                   style={{ fontFamily: "Montserrat, sans-serif" }}
                 >
@@ -378,6 +381,10 @@ const LoginPage = ({ setUserRole }) => {
           </div>
         </div>
       </div>
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+      />
       <Footer />
     </div>
   );

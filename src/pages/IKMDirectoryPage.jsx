@@ -18,7 +18,9 @@ import {
   Upload,
   Settings,
   LogOut,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
@@ -42,6 +44,10 @@ const IKMDirectoryPage = () => {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedServiceType, setSelectedServiceType] = useState("");
   const [selectedCertification, setSelectedCertification] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [hasCertification, setHasCertification] = useState("");
+  const [hasPartnerships, setHasPartnerships] = useState("");
   const [minRating, setMinRating] = useState(0);
   const [ikmList, setIkmList] = useState([]);
   const [filteredIkm, setFilteredIkm] = useState([]);
@@ -52,6 +58,33 @@ const IKMDirectoryPage = () => {
   const [favoriteCounts, setFavoriteCounts] = useState({});
 
   const { role, isLoggedIn, user } = useAuth();
+
+  // Helper functions to get unique cities and provinces from IKM data
+  const getCities = () => {
+    const cities = new Set();
+    ikmList.forEach((ikm) => {
+      if (ikm.officeCity) cities.add(ikm.officeCity);
+      if (ikm.factoryCity) cities.add(ikm.factoryCity);
+    });
+    return Array.from(cities).sort();
+  };
+
+  const getProvinces = () => {
+    const provinces = new Set();
+    ikmList.forEach((ikm) => {
+      if (ikm.officeProvince) provinces.add(ikm.officeProvince);
+      if (ikm.factoryProvince) provinces.add(ikm.factoryProvince);
+    });
+    return Array.from(provinces).sort();
+  };
+
+  const getKblis = () => {
+    const kblis = new Set();
+    ikmList.forEach((ikm) => {
+      if (ikm.kbli) kblis.add(ikm.kbli);
+    });
+    return Array.from(kblis).sort();
+  };
 
   // Fetch favorite counts for all IKM
   useEffect(() => {
@@ -127,7 +160,7 @@ const IKMDirectoryPage = () => {
       businessName || "Tim"
     },\n\nSaya tertarik untuk membahas kemungkinan bermitra dengan perusahaan Anda. Mohon informasikan ketersediaan untuk berdiskusi lebih lanjut.`;
     const mailto = `mailto:${encodeURIComponent(
-      email
+      email,
     )}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailto;
   };
@@ -214,7 +247,7 @@ const IKMDirectoryPage = () => {
   const toggleFavorite = async (id) => {
     if (!isLoggedIn || !(role === "user" || role === "academician")) {
       window.alert(
-        "Silakan login sebagai User atau Akademisi untuk menandai favorit."
+        "Silakan login sebagai User atau Akademisi untuk menandai favorit.",
       );
       return;
     }
@@ -222,7 +255,7 @@ const IKMDirectoryPage = () => {
     // Optimistic UI update
     const prevIkmList = ikmList;
     const updated = ikmList.map((ikm) =>
-      ikm.id === id ? { ...ikm, favorited: !ikm.favorited } : ikm
+      ikm.id === id ? { ...ikm, favorited: !ikm.favorited } : ikm,
     );
     setIkmList(updated);
     setFilteredIkm(
@@ -236,7 +269,7 @@ const IKMDirectoryPage = () => {
                 ikm.products.some((p) =>
                   typeof p === "string"
                     ? p.toLowerCase().includes(searchQuery.toLowerCase())
-                    : p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                    : p.name?.toLowerCase().includes(searchQuery.toLowerCase()),
                 )));
         if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
         if (selectedLocation && selectedLocation !== "Semua")
@@ -250,12 +283,12 @@ const IKMDirectoryPage = () => {
               ? ikm.certifications.some((c) =>
                   typeof c === "string"
                     ? c === selectedCertification
-                    : c.name === selectedCertification
+                    : c.name === selectedCertification,
                 )
               : false);
         if (minRating > 0) matches = matches && ikm.rating >= minRating;
         return matches;
-      })
+      }),
     );
 
     // Update Firestore: add or remove from users/{uid}.favoritedIkm
@@ -285,7 +318,7 @@ const IKMDirectoryPage = () => {
                       ? p.toLowerCase().includes(searchQuery.toLowerCase())
                       : p.name
                           ?.toLowerCase()
-                          .includes(searchQuery.toLowerCase())
+                          .includes(searchQuery.toLowerCase()),
                   )));
           if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
           if (selectedLocation && selectedLocation !== "Semua")
@@ -299,12 +332,12 @@ const IKMDirectoryPage = () => {
                 ? ikm.certifications.some((c) =>
                     typeof c === "string"
                       ? c === selectedCertification
-                      : c.name === selectedCertification
+                      : c.name === selectedCertification,
                   )
                 : false);
           if (minRating > 0) matches = matches && ikm.rating >= minRating;
           return matches;
-        })
+        }),
       );
     }
   };
@@ -362,20 +395,32 @@ const IKMDirectoryPage = () => {
           if (searchQuery)
             matches =
               matches &&
-              (ikm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (ikm.businessName
+                ?.toLowerCase()
+                .includes(searchQuery.toLowerCase()) ||
                 (Array.isArray(ikm.products) &&
                   ikm.products.some((p) =>
                     typeof p === "string"
                       ? p.toLowerCase().includes(searchQuery.toLowerCase())
                       : p.name
                           ?.toLowerCase()
-                          .includes(searchQuery.toLowerCase())
+                          .includes(searchQuery.toLowerCase()),
                   )));
           if (selectedKbli) matches = matches && ikm.kbli === selectedKbli;
           if (selectedLocation && selectedLocation !== "Semua")
-            matches = matches && ikm.location.includes(selectedLocation);
+            matches = matches && ikm.location?.includes(selectedLocation);
+          if (selectedCity)
+            matches =
+              matches &&
+              (ikm.officeCity === selectedCity ||
+                ikm.factoryCity === selectedCity);
+          if (selectedProvince)
+            matches =
+              matches &&
+              (ikm.officeProvince === selectedProvince ||
+                ikm.factoryProvince === selectedProvince);
           if (selectedServiceType && selectedServiceType !== "Semua")
-            matches = matches && ikm.serviceType.includes(selectedServiceType);
+            matches = matches && ikm.serviceType?.includes(selectedServiceType);
           if (selectedCertification && selectedCertification !== "Semua")
             matches =
               matches &&
@@ -383,9 +428,30 @@ const IKMDirectoryPage = () => {
                 ? ikm.certifications.some((c) =>
                     typeof c === "string"
                       ? c === selectedCertification
-                      : c.name === selectedCertification
+                      : c.name === selectedCertification,
                   )
                 : false);
+          if (hasCertification === "yes")
+            matches =
+              matches &&
+              Array.isArray(ikm.certifications) &&
+              ikm.certifications.length > 0;
+          else if (hasCertification === "no")
+            matches =
+              matches &&
+              (!Array.isArray(ikm.certifications) ||
+                ikm.certifications.length === 0);
+          if (hasPartnerships === "yes") {
+            const verifiedCount = Array.isArray(ikm.verifiedPartnerships)
+              ? ikm.verifiedPartnerships.length
+              : 0;
+            matches = matches && verifiedCount > 0;
+          } else if (hasPartnerships === "no") {
+            const verifiedCount = Array.isArray(ikm.verifiedPartnerships)
+              ? ikm.verifiedPartnerships.length
+              : 0;
+            matches = matches && verifiedCount === 0;
+          }
           if (minRating > 0) matches = matches && ikm.rating >= minRating;
           return matches;
         });
@@ -403,20 +469,37 @@ const IKMDirectoryPage = () => {
     searchQuery,
     selectedKbli,
     selectedLocation,
+    selectedCity,
+    selectedProvince,
     selectedServiceType,
     selectedCertification,
+    hasCertification,
+    hasPartnerships,
+    minRating,
+  ]);
+
+  // Auto-apply filters when any filter changes
+  useEffect(() => {
+    applyFilters();
+  }, [
+    searchQuery,
+    selectedKbli,
+    selectedLocation,
+    selectedCity,
+    selectedProvince,
+    selectedServiceType,
+    selectedCertification,
+    hasCertification,
+    hasPartnerships,
     minRating,
   ]);
 
   const kbliOptions = [
     { label: "Semua", value: "" },
-    { label: "Furniture & Kerajinan", value: "16211" },
-    { label: "Tekstil & Garmen", value: "13910" },
-    { label: "Logam & Metalurgi", value: "25110" },
-    { label: "Makanan & Minuman", value: "10711" },
-    { label: "Kemasan & Packaging", value: "17011" },
-    { label: "Kimia & Farmasi", value: "20130" },
-    { label: "Elektronik & Komponen", value: "26101" },
+    ...getKblis().map((kbli) => ({
+      label: `KBLI ${kbli}`,
+      value: kbli,
+    })),
   ];
   const locations = [
     "Semua",
@@ -444,13 +527,13 @@ const IKMDirectoryPage = () => {
     if (searchQuery) {
       filtered = filtered.filter(
         (ikm) =>
-          ikm.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          ikm.businessName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (Array.isArray(ikm.products) &&
             ikm.products.some((p) =>
               typeof p === "string"
                 ? p.toLowerCase().includes(searchQuery.toLowerCase())
-                : p.name?.toLowerCase().includes(searchQuery.toLowerCase())
-            ))
+                : p.name?.toLowerCase().includes(searchQuery.toLowerCase()),
+            )),
       );
     }
 
@@ -460,13 +543,28 @@ const IKMDirectoryPage = () => {
 
     if (selectedLocation && selectedLocation !== "Semua") {
       filtered = filtered.filter((ikm) =>
-        ikm.location.includes(selectedLocation)
+        ikm.location?.includes(selectedLocation),
+      );
+    }
+
+    if (selectedCity) {
+      filtered = filtered.filter(
+        (ikm) =>
+          ikm.officeCity === selectedCity || ikm.factoryCity === selectedCity,
+      );
+    }
+
+    if (selectedProvince) {
+      filtered = filtered.filter(
+        (ikm) =>
+          ikm.officeProvince === selectedProvince ||
+          ikm.factoryProvince === selectedProvince,
       );
     }
 
     if (selectedServiceType && selectedServiceType !== "Semua") {
       filtered = filtered.filter((ikm) =>
-        ikm.serviceType.includes(selectedServiceType)
+        ikm.serviceType?.includes(selectedServiceType),
       );
     }
 
@@ -476,10 +574,40 @@ const IKMDirectoryPage = () => {
           ? ikm.certifications.some((c) =>
               typeof c === "string"
                 ? c === selectedCertification
-                : c.name === selectedCertification
+                : c.name === selectedCertification,
             )
-          : false
+          : false,
       );
+    }
+
+    // Filter by has certification
+    if (hasCertification === "yes") {
+      filtered = filtered.filter(
+        (ikm) =>
+          Array.isArray(ikm.certifications) && ikm.certifications.length > 0,
+      );
+    } else if (hasCertification === "no") {
+      filtered = filtered.filter(
+        (ikm) =>
+          !Array.isArray(ikm.certifications) || ikm.certifications.length === 0,
+      );
+    }
+
+    // Filter by has partnerships
+    if (hasPartnerships === "yes") {
+      filtered = filtered.filter((ikm) => {
+        const verifiedCount = Array.isArray(ikm.verifiedPartnerships)
+          ? ikm.verifiedPartnerships.length
+          : 0;
+        return verifiedCount > 0;
+      });
+    } else if (hasPartnerships === "no") {
+      filtered = filtered.filter((ikm) => {
+        const verifiedCount = Array.isArray(ikm.verifiedPartnerships)
+          ? ikm.verifiedPartnerships.length
+          : 0;
+        return verifiedCount === 0;
+      });
     }
 
     if (minRating > 0) {
@@ -494,12 +622,105 @@ const IKMDirectoryPage = () => {
     setSearchQuery("");
     setSelectedKbli("");
     setSelectedLocation("");
+    setSelectedCity("");
+    setSelectedProvince("");
     setSelectedServiceType("");
     setSelectedCertification("");
+    setHasCertification("");
+    setHasPartnerships("");
     setMinRating(0);
     setFilteredIkm(ikmList);
     setCurrentPage(1);
   };
+
+  // Export to Excel
+  const exportToExcel = () => {
+    const exportData = [];
+    const seen = new Set(); // To avoid duplicates
+
+    filteredIkm.forEach((ikm) => {
+      const fullName = ikm.fullName || "-";
+      const businessName = ikm.businessName || "-";
+      const phone = ikm.phone || "-";
+
+      const officeAddr = ikm.officeAddress || "-";
+      const factoryAddr = ikm.factoryAddress || "-";
+      const officeCity = ikm.officeCity || "-";
+      const factoryCity = ikm.factoryCity || "-";
+
+      const addressesSame =
+        officeAddr === factoryAddr && officeCity === factoryCity;
+
+      if (addressesSame) {
+        // Single row for office address
+        const uniqueKey = `${phone}|${businessName}|${officeAddr}|${officeCity}`;
+        if (!seen.has(uniqueKey)) {
+          seen.add(uniqueKey);
+          exportData.push({
+            "No.": exportData.length + 1,
+            "Kontak Person": fullName,
+            "Nama Perusahaan": businessName,
+            "No. Telp": phone,
+            Alamat: officeAddr,
+            "Kabupaten/Kota": officeCity,
+          });
+        }
+      } else {
+        // Office address row
+        const officeKey = `${phone}|${businessName}|${officeAddr}|${officeCity}`;
+        if (!seen.has(officeKey)) {
+          seen.add(officeKey);
+          exportData.push({
+            "No.": exportData.length + 1,
+            "Kontak Person": fullName,
+            "Nama Perusahaan": businessName,
+            "No. Telp": phone,
+            Alamat: officeAddr,
+            "Kabupaten/Kota": officeCity,
+          });
+        }
+
+        // Factory address row
+        const factoryKey = `${phone}|${businessName}|${factoryAddr}|${factoryCity}`;
+        if (!seen.has(factoryKey)) {
+          seen.add(factoryKey);
+          exportData.push({
+            "No.": exportData.length + 1,
+            "Kontak Person": fullName,
+            "Nama Perusahaan": businessName,
+            "No. Telp": phone,
+            Alamat: factoryAddr,
+            "Kabupaten/Kota": factoryCity,
+          });
+        }
+      }
+    });
+
+    // Re-number after removing duplicates
+    exportData.forEach((item, idx) => {
+      item["No."] = idx + 1;
+    });
+
+    // Create workbook
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Direktori IKM");
+
+    // Set column widths
+    worksheet["!cols"] = [
+      { wch: 5 }, // No.
+      { wch: 20 }, // Kontak Person
+      { wch: 25 }, // Nama Perusahaan
+      { wch: 15 }, // No. Telp
+      { wch: 35 }, // Alamat
+      { wch: 20 }, // Kabupaten/Kota
+    ];
+
+    // Download
+    const fileName = `Direktori_IKM_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -553,7 +774,7 @@ const IKMDirectoryPage = () => {
             </div>
 
             {/* Filter Toggle Button (Mobile) */}
-            {/* <div className="text-center mt-6">
+            <div className="text-center mt-6">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition inline-flex items-center space-x-2"
@@ -568,17 +789,23 @@ const IKMDirectoryPage = () => {
                   <Menu className="w-5 h-5" />
                 )}
               </button>
-            </div> */}
+            </div>
           </div>
         </div>
 
         {/* Filters Section */}
-        {/* {showFilters && (
+        {showFilters && (
           <div className="bg-white shadow-md py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4"> */}
-        {/* Category Filter */}
-        {/* <div>
+              <h3
+                className="text-lg font-bold text-gray-800 mb-4"
+                style={{ fontFamily: "Poppins, sans-serif" }}
+              >
+                Filter IKM
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* KBLI Filter */}
+                <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -593,57 +820,60 @@ const IKMDirectoryPage = () => {
                   >
                     {kbliOptions.map((opt) => (
                       <option key={opt.value || "semua"} value={opt.value}>
-                        {opt.label} {opt.value ? `(${opt.value})` : ""}
+                        {opt.label}
                       </option>
                     ))}
                   </select>
-                </div> */}
-        {/* Location Filter */}
-        {/* <div>
+                </div>
+
+                {/* City Filter */}
+                <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Lokasi
+                    Kota/Kabupaten
                   </label>
                   <select
-                    value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {locations.map((loc) => (
-                      <option key={loc} value={loc === "Semua" ? "" : loc}>
-                        {loc}
+                    <option value="">Semua Kota</option>
+                    {getCities().map((city) => (
+                      <option key={city} value={city}>
+                        {city}
                       </option>
                     ))}
                   </select>
-                </div> */}
+                </div>
 
-        {/* Service Type Filter */}
-        {/* <div>
+                {/* Province Filter */}
+                <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Jenis Layanan
+                    Provinsi
                   </label>
                   <select
-                    value={selectedServiceType}
-                    onChange={(e) => setSelectedServiceType(e.target.value)}
+                    value={selectedProvince}
+                    onChange={(e) => setSelectedProvince(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {serviceTypes.map((type) => (
-                      <option key={type} value={type === "Semua" ? "" : type}>
-                        {type}
+                    <option value="">Semua Provinsi</option>
+                    {getProvinces().map((province) => (
+                      <option key={province} value={province}>
+                        {province}
                       </option>
                     ))}
                   </select>
-                </div> */}
+                </div>
 
-        {/* Certification Filter */}
-        {/* <div>
+                {/* Has Certification Filter */}
+                <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
@@ -651,43 +881,40 @@ const IKMDirectoryPage = () => {
                     Sertifikasi
                   </label>
                   <select
-                    value={selectedCertification}
-                    onChange={(e) => setSelectedCertification(e.target.value)}
+                    value={hasCertification}
+                    onChange={(e) => setHasCertification(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    {certifications.map((cert) => (
-                      <option key={cert} value={cert === "Semua" ? "" : cert}>
-                        {cert}
-                      </option>
-                    ))}
+                    <option value="">Semua</option>
+                    <option value="yes">Memiliki Sertifikasi</option>
+                    <option value="no">Tanpa Sertifikasi</option>
                   </select>
-                </div> */}
+                </div>
 
-        {/* Rating Filter */}
-        {/* <div>
+                {/* Has Partnerships Filter */}
+                <div>
                   <label
                     className="block text-sm font-semibold text-gray-700 mb-2"
                     style={{ fontFamily: "Montserrat, sans-serif" }}
                   >
-                    Rating Minimum
+                    Riwayat Kemitraan
                   </label>
                   <select
-                    value={minRating}
-                    onChange={(e) => setMinRating(Number(e.target.value))}
+                    value={hasPartnerships}
+                    onChange={(e) => setHasPartnerships(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{ fontFamily: "Open Sans, sans-serif" }}
                   >
-                    <option value={0}>Semua Rating</option>
-                    <option value={4}>4+ Bintang</option>
-                    <option value={4.5}>4.5+ Bintang</option>
-                    <option value={4.7}>4.7+ Bintang</option>
+                    <option value="">Semua</option>
+                    <option value="yes">Pernah Bermitra</option>
+                    <option value="no">Belum Bermitra</option>
                   </select>
                 </div>
-              </div> */}
+              </div>
 
-        {/* Filter Actions */}
-        {/* <div className="flex justify-center space-x-4 mt-6">
+              {/* Filter Actions */}
+              <div className="flex justify-center space-x-4 mt-6">
                 <button
                   onClick={applyFilters}
                   className="bg-green-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-green-700 transition"
@@ -702,24 +929,40 @@ const IKMDirectoryPage = () => {
                 >
                   Reset Filter
                 </button>
-              </div> */}
-        {/* </div>
+              </div>
+            </div>
           </div>
-        )} */}
+        )}
 
         {/* Results Count */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p
-            className="text-gray-600 text-lg"
-            style={{ fontFamily: "Open Sans, sans-serif" }}
-          >
-            Menampilkan{" "}
-            <span className="font-bold text-green-600">
-              {filteredIkm.length}
-            </span>{" "}
-            IKM dari total <span className="font-bold">{ikmList.length}</span>{" "}
-            IKM terdaftar
-          </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <p
+              className="text-gray-600 text-lg"
+              style={{ fontFamily: "Open Sans, sans-serif" }}
+            >
+              Menampilkan{" "}
+              <span className="font-bold text-green-600">
+                {filteredIkm.length}
+              </span>{" "}
+              IKM dari total <span className="font-bold">{ikmList.length}</span>{" "}
+              IKM terdaftar
+            </p>
+            <button
+              onClick={exportToExcel}
+              disabled={filteredIkm.length === 0}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all ${
+                filteredIkm.length === 0
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-green-600 text-white hover:bg-green-700 hover:shadow-lg"
+              }`}
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+              title="Export data IKM ke file Excel"
+            >
+              <Download className="w-5 h-5" />
+              <span>Ekspor ke Excel</span>
+            </button>
+          </div>
         </div>
 
         {/* IKM Grid */}
@@ -1088,12 +1331,12 @@ const IKMDirectoryPage = () => {
                     >
                       {(() => {
                         const verified = Array.isArray(
-                          selectedIkm?.verifiedPartnerships
+                          selectedIkm?.verifiedPartnerships,
                         )
                           ? selectedIkm.verifiedPartnerships.length
                           : 0;
                         const company = Array.isArray(
-                          selectedIkm?.companyPartnerships
+                          selectedIkm?.companyPartnerships,
                         )
                           ? selectedIkm.companyPartnerships.length
                           : 0;
@@ -1211,7 +1454,7 @@ const IKMDirectoryPage = () => {
                             className="text-green-600 hover:underline"
                             style={{ fontFamily: "Open Sans, sans-serif" }}
                           >
-                            {selectedIkm.phone}
+                            {selectedIkm.phone} ({selectedIkm.fullName})
                           </a>
                         ) : (
                           <span
@@ -1320,15 +1563,15 @@ const IKMDirectoryPage = () => {
                     const products = Array.isArray(selectedIkm.products)
                       ? selectedIkm.products
                       : Array.isArray(selectedIkm.productList)
-                      ? selectedIkm.productList
-                      : [];
+                        ? selectedIkm.productList
+                        : [];
                     const services = Array.isArray(selectedIkm.services)
                       ? selectedIkm.services
                       : Array.isArray(selectedIkm.serviceList)
-                      ? selectedIkm.serviceList
-                      : Array.isArray(selectedIkm.services_offered)
-                      ? selectedIkm.services_offered
-                      : [];
+                        ? selectedIkm.serviceList
+                        : Array.isArray(selectedIkm.services_offered)
+                          ? selectedIkm.services_offered
+                          : [];
 
                     const serviceFallback =
                       !services.length && selectedIkm.serviceType
@@ -1536,8 +1779,8 @@ const IKMDirectoryPage = () => {
                   const machines = Array.isArray(selectedIkm?.machines)
                     ? selectedIkm.machines
                     : Array.isArray(selectedIkm?.machineList)
-                    ? selectedIkm.machineList
-                    : [];
+                      ? selectedIkm.machineList
+                      : [];
 
                   if (!machines.length) return null;
 
@@ -1663,10 +1906,10 @@ const IKMDirectoryPage = () => {
                           {typeof cert === "string"
                             ? cert
                             : cert.name
-                            ? `${cert.name}${
-                                cert.year ? ` (${cert.year})` : ""
-                              }`
-                            : JSON.stringify(cert)}
+                              ? `${cert.name}${
+                                  cert.year ? ` (${cert.year})` : ""
+                                }`
+                              : JSON.stringify(cert)}
                         </span>
                       ))}
                   </div>
@@ -1682,12 +1925,12 @@ const IKMDirectoryPage = () => {
                   </h3>
                   {(() => {
                     const verifiedPartnerships = Array.isArray(
-                      selectedIkm.verifiedPartnerships
+                      selectedIkm.verifiedPartnerships,
                     )
                       ? selectedIkm.verifiedPartnerships
                       : [];
                     const companyPartnerships = Array.isArray(
-                      selectedIkm.companyPartnerships
+                      selectedIkm.companyPartnerships,
                     )
                       ? selectedIkm.companyPartnerships
                       : [];
@@ -1763,7 +2006,7 @@ const IKMDirectoryPage = () => {
                                             Mulai:
                                           </span>{" "}
                                           {new Date(
-                                            partnership.startDate
+                                            partnership.startDate,
                                           ).toLocaleDateString("id-ID")}
                                         </p>
                                       )}
@@ -1843,7 +2086,7 @@ const IKMDirectoryPage = () => {
                                             Mulai:
                                           </span>{" "}
                                           {new Date(
-                                            partnership.startDate
+                                            partnership.startDate,
                                           ).toLocaleDateString("id-ID")}
                                         </p>
                                       )}
@@ -2206,7 +2449,7 @@ const IKMDirectoryPage = () => {
                       onClick={() =>
                         openMailTo(
                           selectedIkm?.email,
-                          selectedIkm?.businessName
+                          selectedIkm?.businessName,
                         )
                       }
                       aria-label="Email untuk Bermitra"

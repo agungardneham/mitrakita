@@ -43,10 +43,12 @@ const RegisterPage = () => {
     businessName: "",
     kbli: "",
     officeAddress: "",
-    factoryAdress: "",
+    officeCity: "",
+    officeProvince: "",
+    factoryAddress: "",
+    factoryCity: "",
+    factoryProvince: "",
     sameAddress: false,
-    province: "",
-    city: "",
     npwp: "",
     nib: "",
 
@@ -131,9 +133,9 @@ const RegisterPage = () => {
       return;
     }
 
-    // Validate password length (Firebase minimum 6 characters)
-    if (formData.password.length < 6) {
-      setError("Password minimal harus 6 karakter!");
+    // Validate password length (Minimum 8 characters for better security)
+    if (formData.password.length < 8) {
+      setError("Password minimal harus 8 karakter!");
       setIsLoading(false);
       return;
     }
@@ -164,7 +166,7 @@ const RegisterPage = () => {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email.trim(),
-        formData.password
+        formData.password,
       );
 
       const user = userCredential.user;
@@ -198,11 +200,41 @@ const RegisterPage = () => {
           : `/dashboard/${selectedRole}`;
       navigate(dashboardPath);
     } catch (error) {
-      setError(
-        error.code === "auth/email-already-in-use"
-          ? "Email sudah terdaftar. Silakan gunakan email lain."
-          : "Terjadi kesalahan saat pendaftaran. Silakan coba lagi."
-      );
+      console.error("Registration error details:", {
+        code: error.code,
+        message: error.message,
+        email: error.email,
+      });
+
+      // Handle Firebase Auth Errors
+      if (error.code === "auth/email-already-in-use") {
+        setError("Email sudah terdaftar. Silakan gunakan email lain.");
+      } else if (error.code === "auth/weak-password") {
+        setError(
+          "Password terlalu lemah. Gunakan minimal 6 karakter dengan kombinasi huruf dan angka.",
+        );
+      } else if (error.code === "auth/invalid-email") {
+        setError("Format email tidak valid.");
+      } else if (error.code === "auth/operation-not-allowed") {
+        setError(
+          "Operasi pendaftaran tidak diizinkan. Silakan hubungi administrator.",
+        );
+      } else if (error.code === "auth/too-many-requests") {
+        setError(
+          "Terlalu banyak percobaan pendaftaran. Silakan coba beberapa saat lagi.",
+        );
+      } else if (error.code === "permission-denied") {
+        setError(
+          "Terjadi kesalahan saat menyimpan data. Silakan coba lagi nanti.",
+        );
+      } else if (error.message?.includes("email")) {
+        setError("Email sudah terdaftar. Silakan gunakan email lain.");
+      } else {
+        setError(
+          error.message ||
+            "Terjadi kesalahan saat pendaftaran. Silakan coba lagi.",
+        );
+      }
       setIsLoading(false);
       return;
     }
@@ -371,8 +403,8 @@ const RegisterPage = () => {
                   {selectedRole === "ikm"
                     ? "IKM"
                     : selectedRole === "user"
-                    ? "Pengguna"
-                    : "Akademisi"}
+                      ? "Pengguna"
+                      : "Akademisi"}
                 </h2>
                 <button
                   onClick={() => setStep(1)}
@@ -384,6 +416,20 @@ const RegisterPage = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Error Message */}
+                {error && (
+                  <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+                    ⚠️ {error}
+                  </div>
+                )}
+
+                {/* Loading Message */}
+                {isLoading && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-sm">
+                    ⏳ Sedang memproses pendaftaran...
+                  </div>
+                )}
+
                 {/* Common Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -485,7 +531,7 @@ const RegisterPage = () => {
                         className="text-lg font-bold text-gray-800 mb-4"
                         style={{ fontFamily: "Poppins, sans-serif" }}
                       >
-                        Informasi Bisnis
+                        Informasi Usaha
                       </h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -539,6 +585,40 @@ const RegisterPage = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Kontak Person Section */}
+                    <div className="border-t border-gray-200 pt-6 mt-6">
+                      <h3
+                        className="text-lg font-bold text-gray-800 mb-4"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
+                      >
+                        Kontak Person
+                      </h3>
+                    </div>
+                    <div>
+                      <label
+                        className="block text-gray-700 font-semibold mb-2"
+                        style={{ fontFamily: "Montserrat, sans-serif" }}
+                      >
+                        Nama Lengkap <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.fullName}
+                        onChange={(e) =>
+                          handleInputChange("fullName", e.target.value)
+                        }
+                        placeholder="Nama lengkap kontak person"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nama lengkap orang yang dapat dihubungi sebagai kontak
+                        utama IKM Anda.
+                      </p>
+                    </div>
+
                     <div>
                       <label
                         className="block text-gray-700 font-semibold mb-2 mt-6"
@@ -557,6 +637,47 @@ const RegisterPage = () => {
                         style={{ fontFamily: "Open Sans, sans-serif" }}
                         required
                       />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Kota/Kabupaten <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.officeCity}
+                          onChange={(e) =>
+                            handleInputChange("officeCity", e.target.value)
+                          }
+                          placeholder="Contoh: Jakarta Selatan"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Provinsi <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.officeProvince}
+                          onChange={(e) =>
+                            handleInputChange("officeProvince", e.target.value)
+                          }
+                          placeholder="Contoh: DKI Jakarta"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div className="mt-6">
@@ -584,6 +705,57 @@ const RegisterPage = () => {
                       />
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Kota/Kabupaten <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.factoryCity}
+                          onChange={(e) =>
+                            handleInputChange("factoryCity", e.target.value)
+                          }
+                          placeholder="Contoh: Jakarta Selatan"
+                          disabled={formData.sameAddress}
+                          className={`w-full px-4 py-3 rounded-xl border-2 ${
+                            formData.sameAddress
+                              ? "bg-gray-100 border-gray-200"
+                              : "border-gray-300"
+                          } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Provinsi <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.factoryProvince}
+                          onChange={(e) =>
+                            handleInputChange("factoryProvince", e.target.value)
+                          }
+                          placeholder="Contoh: DKI Jakarta"
+                          disabled={formData.sameAddress}
+                          className={`w-full px-4 py-3 rounded-xl border-2 ${
+                            formData.sameAddress
+                              ? "bg-gray-100 border-gray-200"
+                              : "border-gray-300"
+                          } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
+                    </div>
+
                     {/* Checkbox sinkronisasi */}
                     <div className="flex items-center mt-3 mb-6">
                       <input
@@ -592,13 +764,21 @@ const RegisterPage = () => {
                         checked={formData.sameAddress}
                         onChange={(e) => {
                           const checked = e.target.checked;
-                          handleInputChange("sameAddress", checked);
                           if (checked) {
-                            // Jika dicentang, salin alamat kantor ke alamat pabrik
-                            handleInputChange(
-                              "factoryAddress",
-                              formData.officeAddress
-                            );
+                            // Jika dicentang, salin semua alamat kantor ke alamat pabrik dalam satu kali update
+                            setFormData({
+                              ...formData,
+                              sameAddress: true,
+                              factoryAddress: formData.officeAddress,
+                              factoryCity: formData.officeCity,
+                              factoryProvince: formData.officeProvince,
+                            });
+                          } else {
+                            // Jika tidak dicentang, hanya update sameAddress
+                            setFormData({
+                              ...formData,
+                              sameAddress: false,
+                            });
                           }
                         }}
                         className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"

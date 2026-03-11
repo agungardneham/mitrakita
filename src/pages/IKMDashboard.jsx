@@ -195,7 +195,7 @@ const IKMDashboard = () => {
           await setDoc(
             userDocRef,
             { ...profileData, role: "ikm", uid: user.uid },
-            { merge: true }
+            { merge: true },
           );
           setOriginalProfile(profileData);
         }
@@ -217,9 +217,8 @@ const IKMDashboard = () => {
 
     (async () => {
       try {
-        const { getFirestore, doc, onSnapshot } = await import(
-          "firebase/firestore"
-        );
+        const { getFirestore, doc, onSnapshot } =
+          await import("firebase/firestore");
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
 
@@ -237,24 +236,24 @@ const IKMDashboard = () => {
             setNewPartnershipRequests(
               Array.isArray(data.newPartnershipRequests)
                 ? data.newPartnershipRequests
-                : []
+                : [],
             );
             setVerifiedPartnerships(
               Array.isArray(data.verifiedPartnerships)
                 ? data.verifiedPartnerships
-                : []
+                : [],
             );
             setIkmInitiatedPendingPartnerships(
               Array.isArray(data.pendingPartnerships)
                 ? data.pendingPartnerships
-                : []
+                : [],
             );
             setLoadingPartnerships(false);
           },
           (error) => {
             console.error("Realtime IKM partnership listener error:", error);
             setLoadingPartnerships(false);
-          }
+          },
         );
       } catch (err) {
         console.error("Error setting up IKM partnership listener:", err);
@@ -290,7 +289,7 @@ const IKMDashboard = () => {
         const db = getFirestore();
         const qref = firestoreQuery(
           collection(db, "users"),
-          where("role", "==", "user")
+          where("role", "==", "user"),
         );
         const snap = await getDocs(qref);
         const results = [];
@@ -336,9 +335,8 @@ const IKMDashboard = () => {
         return;
       }
 
-      const { getFirestore, doc, setDoc, arrayUnion } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, setDoc, arrayUnion } =
+        await import("firebase/firestore");
       const db = getFirestore();
 
       const payloadWithIkmInfo = {
@@ -373,7 +371,7 @@ const IKMDashboard = () => {
       await setDoc(
         ikmDocRef,
         { pendingPartnerships: arrayUnion(payloadWithIkmInfo) },
-        { merge: true }
+        { merge: true },
       );
 
       // Save to user's newPartnershipRequests array
@@ -383,7 +381,7 @@ const IKMDashboard = () => {
         {
           newPartnershipRequests: arrayUnion(payloadWithIkmInfo),
         },
-        { merge: true }
+        { merge: true },
       );
 
       // Optimistic update for IKM's local state
@@ -411,10 +409,15 @@ const IKMDashboard = () => {
 
   // Profile Data State
   const [profileData, setProfileData] = useState({
+    fullName: "",
     businessName: "",
     businessType: "",
     officeAddress: "",
+    officeCity: "",
+    officeProvince: "",
     factoryAddress: "",
+    factoryCity: "",
+    factoryProvince: "",
     nib: "",
     phone: "",
     kbli: "",
@@ -443,7 +446,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...profileData, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
       setOriginalProfile({ ...profileData });
       setSaveStatus("Tersimpan");
@@ -464,7 +467,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...updatedProfile, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("Error saving certification:", err);
@@ -480,7 +483,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...updatedProfile, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("Error saving academic partnership:", err);
@@ -496,7 +499,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...updatedProfile, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("Error saving company partnership:", err);
@@ -554,7 +557,7 @@ const IKMDashboard = () => {
               // Not fatal: just log and continue with upload
               console.warn(
                 "Failed to remove previous logo from storage:",
-                removeError
+                removeError,
               );
             } else {
               console.info("Previous logo removed from storage:", prevPath);
@@ -563,7 +566,7 @@ const IKMDashboard = () => {
         } catch (remErr) {
           console.warn(
             "Error while attempting to remove previous logo:",
-            remErr
+            remErr,
           );
         }
       }
@@ -594,7 +597,7 @@ const IKMDashboard = () => {
         {
           logoUrl: publicUrl,
         },
-        { merge: true }
+        { merge: true },
       );
 
       // Update local state
@@ -735,7 +738,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...updatedProfile, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("Error saving machines:", err);
@@ -751,7 +754,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...updatedProfile, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("Error saving products:", err);
@@ -767,7 +770,7 @@ const IKMDashboard = () => {
       await setDoc(
         userDocRef,
         { ...updatedProfile, role: "ikm", uid: user.uid },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("Error saving services:", err);
@@ -824,7 +827,7 @@ const IKMDashboard = () => {
           verifiedPartnerships: arrayUnion(request),
           newPartnershipRequests: arrayRemove(request),
         },
-        { merge: true }
+        { merge: true },
       );
 
       // Add to user's verifiedPartnerships and remove newPartnership
@@ -837,7 +840,7 @@ const IKMDashboard = () => {
             verifiedPartnerships: arrayUnion(request),
             pendingPartnerships: arrayRemove(request),
           },
-          { merge: true }
+          { merge: true },
         );
       }
 
@@ -857,9 +860,8 @@ const IKMDashboard = () => {
   // Handler for rejecting partnership request
   const handleRejectPartnership = async (request, index) => {
     try {
-      const { getFirestore, doc, setDoc, arrayRemove } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, setDoc, arrayRemove } =
+        await import("firebase/firestore");
       const db = getFirestore();
 
       // Remove from IKM's newPartnershipRequests
@@ -867,7 +869,7 @@ const IKMDashboard = () => {
       await setDoc(
         ikmDocRef,
         { newPartnershipRequests: arrayRemove(request) },
-        { merge: true }
+        { merge: true },
       );
 
       // Remove from user's pendingPartnerships
@@ -876,7 +878,7 @@ const IKMDashboard = () => {
         await setDoc(
           userDocRef,
           { pendingPartnerships: arrayRemove(request) },
-          { merge: true }
+          { merge: true },
         );
       }
 
@@ -1075,8 +1077,8 @@ const IKMDashboard = () => {
                         saveStatus.includes("Gagal")
                           ? "bg-red-100 text-red-700"
                           : saveStatus.includes("Tersimpan")
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-blue-100 text-blue-700"
                       }`}
                     >
                       {saveStatus}
@@ -1175,6 +1177,28 @@ const IKMDashboard = () => {
                       )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label
+                          className="block text-sm font-semibold text-gray-700 mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Kontak Person
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.fullName}
+                          onChange={(e) =>
+                            handleProfileUpdate("fullName", e.target.value)
+                          }
+                          disabled={!editingProfile}
+                          className={`w-full px-4 py-3 rounded-xl border-2 ${
+                            editingProfile
+                              ? "border-gray-300 focus:border-green-500"
+                              : "border-gray-200 bg-gray-50"
+                          } focus:outline-none`}
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        />
+                      </div>
                       <div>
                         <label
                           className="block text-sm font-semibold text-gray-700 mb-2"
@@ -1315,6 +1339,57 @@ const IKMDashboard = () => {
                         } focus:outline-none`}
                         style={{ fontFamily: "Open Sans, sans-serif" }}
                       />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label
+                            className="block text-sm font-semibold text-gray-700 mb-2"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Kota/Kabupaten
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.officeCity}
+                            onChange={(e) =>
+                              handleProfileUpdate("officeCity", e.target.value)
+                            }
+                            disabled={!editingProfile}
+                            placeholder="Contoh: Jakarta Selatan"
+                            className={`w-full px-4 py-3 rounded-xl border-2 ${
+                              editingProfile
+                                ? "border-gray-300 focus:border-green-500"
+                                : "border-gray-200 bg-gray-50"
+                            } focus:outline-none`}
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-semibold text-gray-700 mb-2"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Provinsi
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.officeProvince}
+                            onChange={(e) =>
+                              handleProfileUpdate(
+                                "officeProvince",
+                                e.target.value,
+                              )
+                            }
+                            disabled={!editingProfile}
+                            placeholder="Contoh: DKI Jakarta"
+                            className={`w-full px-4 py-3 rounded-xl border-2 ${
+                              editingProfile
+                                ? "border-gray-300 focus:border-green-500"
+                                : "border-gray-200 bg-gray-50"
+                            } focus:outline-none`}
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label
@@ -1337,6 +1412,57 @@ const IKMDashboard = () => {
                         } focus:outline-none`}
                         style={{ fontFamily: "Open Sans, sans-serif" }}
                       />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label
+                            className="block text-sm font-semibold text-gray-700 mb-2"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Kota/Kabupaten
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.factoryCity}
+                            onChange={(e) =>
+                              handleProfileUpdate("factoryCity", e.target.value)
+                            }
+                            disabled={!editingProfile}
+                            placeholder="Contoh: Jakarta Selatan"
+                            className={`w-full px-4 py-3 rounded-xl border-2 ${
+                              editingProfile
+                                ? "border-gray-300 focus:border-green-500"
+                                : "border-gray-200 bg-gray-50"
+                            } focus:outline-none`}
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            className="block text-sm font-semibold text-gray-700 mb-2"
+                            style={{ fontFamily: "Montserrat, sans-serif" }}
+                          >
+                            Provinsi
+                          </label>
+                          <input
+                            type="text"
+                            value={profileData.factoryProvince}
+                            onChange={(e) =>
+                              handleProfileUpdate(
+                                "factoryProvince",
+                                e.target.value,
+                              )
+                            }
+                            disabled={!editingProfile}
+                            placeholder="Contoh: DKI Jakarta"
+                            className={`w-full px-4 py-3 rounded-xl border-2 ${
+                              editingProfile
+                                ? "border-gray-300 focus:border-green-500"
+                                : "border-gray-200 bg-gray-50"
+                            } focus:outline-none`}
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1490,10 +1616,10 @@ const IKMDashboard = () => {
                               <button
                                 onClick={async () => {
                                   const updated = Array.isArray(
-                                    profileData.certifications
+                                    profileData.certifications,
                                   )
                                     ? profileData.certifications.filter(
-                                        (_, i) => i !== idx
+                                        (_, i) => i !== idx,
                                       )
                                     : [];
                                   const updatedProfile = {
@@ -1503,7 +1629,7 @@ const IKMDashboard = () => {
                                   setProfileData(updatedProfile);
                                   // Save to Firestore immediately
                                   await saveCertificationToFirestore(
-                                    updatedProfile
+                                    updatedProfile,
                                   );
                                 }}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
@@ -1592,10 +1718,10 @@ const IKMDashboard = () => {
                                 <button
                                   onClick={async () => {
                                     const updated = Array.isArray(
-                                      profileData.academicPartnerships
+                                      profileData.academicPartnerships,
                                     )
                                       ? profileData.academicPartnerships.filter(
-                                          (_, i) => i !== idx
+                                          (_, i) => i !== idx,
                                         )
                                       : [];
                                     const updatedProfile = {
@@ -1605,7 +1731,7 @@ const IKMDashboard = () => {
                                     setProfileData(updatedProfile);
                                     // Save to Firestore immediately
                                     await saveAcademicPartnershipToFirestore(
-                                      updatedProfile
+                                      updatedProfile,
                                     );
                                   }}
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
@@ -1616,7 +1742,7 @@ const IKMDashboard = () => {
                               </div>
                             )}
                           </div>
-                        )
+                        ),
                       )}
                   </div>
                   {editingProfile && (
@@ -1697,10 +1823,10 @@ const IKMDashboard = () => {
                                 <button
                                   onClick={async () => {
                                     const updated = Array.isArray(
-                                      profileData.companyPartnerships
+                                      profileData.companyPartnerships,
                                     )
                                       ? profileData.companyPartnerships.filter(
-                                          (_, i) => i !== idx
+                                          (_, i) => i !== idx,
                                         )
                                       : [];
                                     const updatedProfile = {
@@ -1710,7 +1836,7 @@ const IKMDashboard = () => {
                                     setProfileData(updatedProfile);
                                     // Save to Firestore immediately
                                     await saveCompanyPartnershipToFirestore(
-                                      updatedProfile
+                                      updatedProfile,
                                     );
                                   }}
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
@@ -1721,7 +1847,7 @@ const IKMDashboard = () => {
                               </div>
                             )}
                           </div>
-                        )
+                        ),
                       )}
                   </div>
                   {editingProfile && (
@@ -1891,12 +2017,12 @@ const IKMDashboard = () => {
                           onClick={async () => {
                             if (
                               window.confirm(
-                                "Apakah Anda yakin ingin menghapus produk ini?"
+                                "Apakah Anda yakin ingin menghapus produk ini?",
                               )
                             ) {
                               const updatedProducts =
                                 profileData.products.filter(
-                                  (_, i) => i !== index
+                                  (_, i) => i !== index,
                                 );
                               const updatedProfile = {
                                 ...profileData,
@@ -2012,12 +2138,12 @@ const IKMDashboard = () => {
                           onClick={async () => {
                             if (
                               window.confirm(
-                                "Apakah Anda yakin ingin menghapus layanan ini?"
+                                "Apakah Anda yakin ingin menghapus layanan ini?",
                               )
                             ) {
                               const updatedServices =
                                 profileData.services.filter(
-                                  (_, i) => i !== idx
+                                  (_, i) => i !== idx,
                                 );
                               const updatedProfile = {
                                 ...profileData,
@@ -2132,7 +2258,7 @@ const IKMDashboard = () => {
                               onClick={async () => {
                                 if (
                                   window.confirm(
-                                    "Apakah Anda yakin ingin menghapus mesin ini?"
+                                    "Apakah Anda yakin ingin menghapus mesin ini?",
                                   )
                                 ) {
                                   // Ambil nama mesin yang akan dihapus
@@ -2140,38 +2266,38 @@ const IKMDashboard = () => {
                                     profileData.machines[idx]?.name;
                                   // Hapus mesin dari array mesin
                                   const updatedMachines = Array.isArray(
-                                    profileData.machines
+                                    profileData.machines,
                                   )
                                     ? profileData.machines.filter(
-                                        (_, i) => i !== idx
+                                        (_, i) => i !== idx,
                                       )
                                     : [];
                                   // Hapus referensi mesin dari produk
                                   const updatedProducts = Array.isArray(
-                                    profileData.products
+                                    profileData.products,
                                   )
                                     ? profileData.products.map((product) => ({
                                         ...product,
                                         machinesUsed: Array.isArray(
-                                          product.machinesUsed
+                                          product.machinesUsed,
                                         )
                                           ? product.machinesUsed.filter(
-                                              (m) => m !== deletedMachine
+                                              (m) => m !== deletedMachine,
                                             )
                                           : [],
                                       }))
                                     : [];
                                   // Hapus referensi mesin dari layanan
                                   const updatedServices = Array.isArray(
-                                    profileData.services
+                                    profileData.services,
                                   )
                                     ? profileData.services.map((service) => ({
                                         ...service,
                                         machinesUsed: Array.isArray(
-                                          service.machinesUsed
+                                          service.machinesUsed,
                                         )
                                           ? service.machinesUsed.filter(
-                                              (m) => m !== deletedMachine
+                                              (m) => m !== deletedMachine,
                                             )
                                           : [],
                                       }))
@@ -2292,7 +2418,7 @@ const IKMDashboard = () => {
                               <p className="text-sm text-gray-600 mb-1">
                                 <strong>Tanggal Mulai:</strong>{" "}
                                 {new Date(request.startDate).toLocaleDateString(
-                                  "id-ID"
+                                  "id-ID",
                                 )}
                               </p>
                               {request.duration && (
@@ -2316,7 +2442,7 @@ const IKMDashboard = () => {
                                   day: "numeric",
                                   hour: "2-digit",
                                   minute: "2-digit",
-                                }
+                                },
                               )}
                             </div>
                           </div>
@@ -2533,7 +2659,7 @@ const IKMDashboard = () => {
                             <p className="text-sm text-gray-600 mb-1">
                               <strong>Tanggal Mulai:</strong>{" "}
                               {new Date(request.startDate).toLocaleDateString(
-                                "id-ID"
+                                "id-ID",
                               )}
                             </p>
                             {request.duration && (
@@ -2557,7 +2683,7 @@ const IKMDashboard = () => {
                                 day: "numeric",
                                 hour: "2-digit",
                                 minute: "2-digit",
-                              }
+                              },
                             )}
                           </div>
                         </div>
@@ -2642,7 +2768,7 @@ const IKMDashboard = () => {
                               <strong>Tanggal Mulai:</strong>{" "}
                               {req.startDate
                                 ? new Date(req.startDate).toLocaleDateString(
-                                    "id-ID"
+                                    "id-ID",
                                   )
                                 : "-"}
                             </p>
@@ -2662,7 +2788,7 @@ const IKMDashboard = () => {
                                       day: "numeric",
                                       hour: "2-digit",
                                       minute: "2-digit",
-                                    }
+                                    },
                                   )
                                 : "-"}
                             </p>
@@ -2731,7 +2857,7 @@ const IKMDashboard = () => {
                           </p>
                           <p className="font-semibold text-gray-800">
                             {new Date(partnership.startDate).toLocaleDateString(
-                              "id-ID"
+                              "id-ID",
                             )}
                           </p>
                         </div>
@@ -3129,7 +3255,7 @@ const IKMDashboard = () => {
                             <input
                               type="checkbox"
                               checked={newProduct.machinesUsed.includes(
-                                machine.name
+                                machine.name,
                               )}
                               onChange={(e) => {
                                 if (e.target.checked) {
@@ -3145,7 +3271,7 @@ const IKMDashboard = () => {
                                     ...newProduct,
                                     machinesUsed:
                                       newProduct.machinesUsed.filter(
-                                        (m) => m !== machine.name
+                                        (m) => m !== machine.name,
                                       ),
                                   });
                                 }
@@ -3268,8 +3394,8 @@ const IKMDashboard = () => {
                       {uploadingProduct
                         ? "Mengupload..."
                         : editingProductIdx !== null
-                        ? "Update Produk"
-                        : "Simpan Produk"}
+                          ? "Update Produk"
+                          : "Simpan Produk"}
                     </button>
                   </div>
                 </form>
@@ -3514,7 +3640,7 @@ const IKMDashboard = () => {
                             <input
                               type="checkbox"
                               checked={newService.machinesUsed.includes(
-                                machine.name
+                                machine.name,
                               )}
                               onChange={(e) => {
                                 if (e.target.checked) {
@@ -3530,7 +3656,7 @@ const IKMDashboard = () => {
                                     ...newService,
                                     machinesUsed:
                                       newService.machinesUsed.filter(
-                                        (m) => m !== machine.name
+                                        (m) => m !== machine.name,
                                       ),
                                   });
                                 }
@@ -3626,8 +3752,8 @@ const IKMDashboard = () => {
                       {uploadingService
                         ? "Mengupload..."
                         : editingServiceIdx !== null
-                        ? "Update Layanan"
-                        : "Simpan Layanan"}
+                          ? "Update Layanan"
+                          : "Simpan Layanan"}
                     </button>
                   </div>
                 </form>

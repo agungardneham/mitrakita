@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage";
 import AboutUsPage from "./pages/AboutUsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import IKMDirectoryPage from "./pages/IKMDirectoryPage";
 import ResearchPage from "./pages/ResearchPage";
 import IKMDashboard from "./pages/IKMDashboard";
@@ -24,6 +25,7 @@ function App() {
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/direktori" element={<IKMDirectoryPage />} />
           <Route
             path="/penelitian"

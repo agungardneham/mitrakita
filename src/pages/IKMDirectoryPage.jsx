@@ -648,6 +648,10 @@ const IKMDirectoryPage = () => {
       const officeCity = ikm.officeCity || "-";
       const factoryCity = ikm.factoryCity || "-";
 
+      // Extract KBLI digits
+      const kbli5Digit = ikm.kbli || "-";
+      const kbli2Digit = ikm.kbli ? String(ikm.kbli).substring(0, 2) : "-";
+
       const addressesSame =
         officeAddr === factoryAddr && officeCity === factoryCity;
 
@@ -663,6 +667,8 @@ const IKMDirectoryPage = () => {
             "No. Telp": phone,
             Alamat: officeAddr,
             "Kabupaten/Kota": officeCity,
+            "KBLI 5 Digit": kbli5Digit,
+            "KBLI 2 Digit": kbli2Digit,
           });
         }
       } else {
@@ -677,6 +683,8 @@ const IKMDirectoryPage = () => {
             "No. Telp": phone,
             Alamat: officeAddr,
             "Kabupaten/Kota": officeCity,
+            "KBLI 5 Digit": kbli5Digit,
+            "KBLI 2 Digit": kbli2Digit,
           });
         }
 
@@ -691,6 +699,8 @@ const IKMDirectoryPage = () => {
             "No. Telp": phone,
             Alamat: factoryAddr,
             "Kabupaten/Kota": factoryCity,
+            "KBLI 5 Digit": kbli5Digit,
+            "KBLI 2 Digit": kbli2Digit,
           });
         }
       }
@@ -714,6 +724,8 @@ const IKMDirectoryPage = () => {
       { wch: 15 }, // No. Telp
       { wch: 35 }, // Alamat
       { wch: 20 }, // Kabupaten/Kota
+      { wch: 12 }, // KBLI 5 Digit
+      { wch: 12 }, // KBLI 2 Digit
     ];
 
     // Download

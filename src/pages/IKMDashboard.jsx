@@ -21,6 +21,7 @@ import {
   LogOut,
   Pencil,
   ToolCase,
+  ClipboardList,
 } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -796,10 +797,16 @@ const IKMDashboard = () => {
       label: "Layanan",
       icon: <ToolCase className="w-5 h-5" />,
     },
+
     {
       id: "partnerships",
       label: "Kemitraan",
       icon: <Users className="w-5 h-5" />,
+    },
+    {
+      id: "survey",
+      label: "Survey",
+      icon: <ClipboardList className="w-5 h-5" />,
     },
     // {
     //   id: "ratings",
@@ -946,7 +953,13 @@ const IKMDashboard = () => {
             {sidebarItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  if (item.id === "survey") {
+                    navigate("/dashboard/survey");
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                }}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl mb-2 transition-all ${
                   activeTab === item.id
                     ? "bg-green-600 text-white shadow-lg"
@@ -1028,8 +1041,13 @@ const IKMDashboard = () => {
                   <button
                     key={item.id}
                     onClick={() => {
-                      setActiveTab(item.id);
-                      setSidebarOpen(false);
+                      if (item.id === "survey") {
+                        navigate("/dashboard/survey");
+                        setSidebarOpen(false);
+                      } else {
+                        setActiveTab(item.id);
+                        setSidebarOpen(false);
+                      }
                     }}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl mb-2 transition-all ${
                       activeTab === item.id

@@ -3,7 +3,14 @@ import { Building2, Users, GraduationCap, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase-config";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
@@ -81,6 +88,18 @@ const LoginPage = ({ setUserRole }) => {
       }
 
       const roleToUse = roleFromDb || selectedRole;
+
+      // Record login in Firestore
+      try {
+        await addDoc(collection(db, "login_logs"), {
+          email: user.email,
+          role: roleToUse,
+          loginAt: serverTimestamp(),
+        });
+      } catch (logError) {
+        console.error("Error recording login log:", logError);
+        // Don't throw error here - let user login even if logging fails
+      }
 
       // Optionally lift role to parent
       if (setUserRole) setUserRole(roleToUse);

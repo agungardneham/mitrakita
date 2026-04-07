@@ -51,6 +51,8 @@ const RegisterPage = () => {
     sameAddress: false,
     npwp: "",
     nib: "",
+    gender: "",
+    age: "",
 
     // User specific
     fullName: "",
@@ -535,6 +537,7 @@ const RegisterPage = () => {
                       </h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Baris 1: Nama Usaha & KBLI */}
                       <div>
                         <label
                           className="block text-gray-700 font-semibold mb-2"
@@ -584,62 +587,49 @@ const RegisterPage = () => {
                           24103
                         </p>
                       </div>
-                    </div>
 
-                    {/* Kontak Person Section */}
-                    <div className="border-t border-gray-200 pt-6 mt-6">
-                      <h3
-                        className="text-lg font-bold text-gray-800 mb-4"
-                        style={{ fontFamily: "Poppins, sans-serif" }}
-                      >
-                        Kontak Person
-                      </h3>
-                    </div>
-                    <div>
-                      <label
-                        className="block text-gray-700 font-semibold mb-2"
-                        style={{ fontFamily: "Montserrat, sans-serif" }}
-                      >
-                        Nama Lengkap <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.fullName}
-                        onChange={(e) =>
-                          handleInputChange("fullName", e.target.value)
-                        }
-                        placeholder="Nama lengkap kontak person"
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
-                        required
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Nama lengkap orang yang dapat dihubungi sebagai kontak
-                        utama IKM Anda.
-                      </p>
-                    </div>
+                      {/* Baris 2: NIB (setengah bagian) */}
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          NIB (Nomor Induk Berusaha)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.nib}
+                          onChange={(e) =>
+                            handleInputChange("nib", e.target.value)
+                          }
+                          placeholder="1234567890123"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                        />
+                      </div>
 
-                    <div>
-                      <label
-                        className="block text-gray-700 font-semibold mb-2 mt-6"
-                        style={{ fontFamily: "Montserrat, sans-serif" }}
-                      >
-                        Alamat Kantor <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={formData.officeAddress}
-                        onChange={(e) =>
-                          handleInputChange("officeAddress", e.target.value)
-                        }
-                        placeholder="Jalan, Kelurahan, Kecamatan"
-                        rows={3}
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
-                        required
-                      />
-                    </div>
+                      {/* Baris 3: Alamat Kantor (full width) */}
+                      <div className="col-span-1 md:col-span-2">
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Alamat Kantor <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={formData.officeAddress}
+                          onChange={(e) =>
+                            handleInputChange("officeAddress", e.target.value)
+                          }
+                          placeholder="Jalan, Kelurahan, Kecamatan"
+                          rows={4}
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      {/* Baris 4: Kota/Kabupaten & Provinsi Kantor */}
                       <div>
                         <label
                           className="block text-gray-700 font-semibold mb-2"
@@ -678,34 +668,34 @@ const RegisterPage = () => {
                           required
                         />
                       </div>
-                    </div>
 
-                    <div className="mt-6">
-                      <label
-                        className="block text-gray-700 font-semibold mb-2"
-                        style={{ fontFamily: "Montserrat, sans-serif" }}
-                      >
-                        Alamat Pabrik <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={formData.factoryAddress}
-                        onChange={(e) =>
-                          handleInputChange("factoryAddress", e.target.value)
-                        }
-                        placeholder="Jalan, Kelurahan, Kecamatan"
-                        rows={3}
-                        disabled={formData.sameAddress}
-                        className={`w-full px-4 py-3 rounded-xl border-2 ${
-                          formData.sameAddress
-                            ? "bg-gray-100 border-gray-200"
-                            : "border-gray-300"
-                        } focus:outline-none focus:ring-2 focus:ring-green-500`}
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
-                        required
-                      />
-                    </div>
+                      {/* Baris 5: Alamat Pabrik (full width) */}
+                      <div className="col-span-1 md:col-span-2">
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Alamat Pabrik <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={formData.factoryAddress}
+                          onChange={(e) =>
+                            handleInputChange("factoryAddress", e.target.value)
+                          }
+                          placeholder="Jalan, Kelurahan, Kecamatan"
+                          rows={4}
+                          disabled={formData.sameAddress}
+                          className={`w-full px-4 py-3 rounded-xl border-2 ${
+                            formData.sameAddress
+                              ? "bg-gray-100 border-gray-200 cursor-not-allowed"
+                              : "border-gray-300"
+                          } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                          style={{ fontFamily: "Open Sans, sans-serif" }}
+                          required
+                        />
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                      {/* Baris 6: Kota/Kabupaten & Provinsi Pabrik */}
                       <div>
                         <label
                           className="block text-gray-700 font-semibold mb-2"
@@ -723,7 +713,7 @@ const RegisterPage = () => {
                           disabled={formData.sameAddress}
                           className={`w-full px-4 py-3 rounded-xl border-2 ${
                             formData.sameAddress
-                              ? "bg-gray-100 border-gray-200"
+                              ? "bg-gray-100 border-gray-200 cursor-not-allowed"
                               : "border-gray-300"
                           } focus:outline-none focus:ring-2 focus:ring-green-500`}
                           style={{ fontFamily: "Open Sans, sans-serif" }}
@@ -747,69 +737,163 @@ const RegisterPage = () => {
                           disabled={formData.sameAddress}
                           className={`w-full px-4 py-3 rounded-xl border-2 ${
                             formData.sameAddress
-                              ? "bg-gray-100 border-gray-200"
+                              ? "bg-gray-100 border-gray-200 cursor-not-allowed"
                               : "border-gray-300"
                           } focus:outline-none focus:ring-2 focus:ring-green-500`}
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                           required
                         />
                       </div>
+
+                      {/* Baris 7: Checkbox Sinkronisasi Alamat */}
+                      <div className="col-span-1 md:col-span-2">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="sameAddress"
+                            checked={formData.sameAddress}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              if (checked) {
+                                // Jika dicentang, salin semua alamat kantor ke alamat pabrik dalam satu kali update
+                                setFormData({
+                                  ...formData,
+                                  sameAddress: true,
+                                  factoryAddress: formData.officeAddress,
+                                  factoryCity: formData.officeCity,
+                                  factoryProvince: formData.officeProvince,
+                                });
+                              } else {
+                                // Jika tidak dicentang, hanya update sameAddress
+                                setFormData({
+                                  ...formData,
+                                  sameAddress: false,
+                                });
+                              }
+                            }}
+                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                          <label
+                            htmlFor="sameAddress"
+                            className="ml-2 text-gray-700"
+                            style={{ fontFamily: "Open Sans, sans-serif" }}
+                          >
+                            Alamat pabrik sama dengan alamat kantor
+                          </label>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Checkbox sinkronisasi */}
-                    <div className="flex items-center mt-3 mb-6">
-                      <input
-                        type="checkbox"
-                        id="sameAddress"
-                        checked={formData.sameAddress}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          if (checked) {
-                            // Jika dicentang, salin semua alamat kantor ke alamat pabrik dalam satu kali update
-                            setFormData({
-                              ...formData,
-                              sameAddress: true,
-                              factoryAddress: formData.officeAddress,
-                              factoryCity: formData.officeCity,
-                              factoryProvince: formData.officeProvince,
-                            });
-                          } else {
-                            // Jika tidak dicentang, hanya update sameAddress
-                            setFormData({
-                              ...formData,
-                              sameAddress: false,
-                            });
-                          }
-                        }}
-                        className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                      />
-                      <label
-                        htmlFor="sameAddress"
-                        className="ml-2 text-gray-700"
-                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                    {/* Kontak Person Section */}
+                    <div className="border-t border-gray-200 pt-6 mt-6">
+                      <h3
+                        className="text-lg font-bold text-gray-800 mb-4"
+                        style={{ fontFamily: "Poppins, sans-serif" }}
                       >
-                        Alamat pabrik sama dengan alamat kantor
+                        Kontak Person
+                      </h3>
+                    </div>
+                    <div>
+                      <label
+                        className="block text-gray-700 font-semibold mb-2"
+                        style={{ fontFamily: "Montserrat, sans-serif" }}
+                      >
+                        Nama Lengkap <span className="text-red-500">*</span>
                       </label>
+                      <input
+                        type="text"
+                        value={formData.fullName}
+                        onChange={(e) =>
+                          handleInputChange("fullName", e.target.value)
+                        }
+                        placeholder="Nama lengkap kontak person"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        style={{ fontFamily: "Open Sans, sans-serif" }}
+                        required
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Nama lengkap orang yang dapat dihubungi sebagai kontak
+                        utama IKM Anda.
+                      </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                       <div>
                         <label
                           className="block text-gray-700 font-semibold mb-2"
                           style={{ fontFamily: "Montserrat, sans-serif" }}
                         >
-                          NIB (Nomor Induk Berusaha)
+                          Jenis Kelamin <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          value={formData.nib}
+                        <div className="space-y-3 mt-2">
+                          <div className="flex items-center">
+                            <input
+                              type="radio"
+                              id="gender-male"
+                              name="gender"
+                              value="Laki-Laki"
+                              checked={formData.gender === "Laki-Laki"}
+                              onChange={(e) =>
+                                handleInputChange("gender", e.target.value)
+                              }
+                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                              required
+                            />
+                            <label
+                              htmlFor="gender-male"
+                              className="ml-2 text-gray-700"
+                              style={{ fontFamily: "Open Sans, sans-serif" }}
+                            >
+                              Laki-Laki
+                            </label>
+                          </div>
+                          <div className="flex items-center">
+                            <input
+                              type="radio"
+                              id="gender-female"
+                              name="gender"
+                              value="Perempuan"
+                              checked={formData.gender === "Perempuan"}
+                              onChange={(e) =>
+                                handleInputChange("gender", e.target.value)
+                              }
+                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                              required
+                            />
+                            <label
+                              htmlFor="gender-female"
+                              className="ml-2 text-gray-700"
+                              style={{ fontFamily: "Open Sans, sans-serif" }}
+                            >
+                              Perempuan
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          className="block text-gray-700 font-semibold mb-2"
+                          style={{ fontFamily: "Montserrat, sans-serif" }}
+                        >
+                          Usia <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={formData.age}
                           onChange={(e) =>
-                            handleInputChange("nib", e.target.value)
+                            handleInputChange("age", e.target.value)
                           }
-                          placeholder="1234567890123"
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
                           style={{ fontFamily: "Open Sans, sans-serif" }}
-                        />
+                          required
+                        >
+                          <option value="">Pilih Usia</option>
+                          <option value="< 20 Tahun">&lt; 20 Tahun</option>
+                          <option value="20-30 Tahun">20-30 Tahun</option>
+                          <option value="31-40 Tahun">31-40 Tahun</option>
+                          <option value="41-50 Tahun">41-50 Tahun</option>
+                          <option value=">50 Tahun">&gt;50 Tahun</option>
+                        </select>
                       </div>
                     </div>
                   </div>

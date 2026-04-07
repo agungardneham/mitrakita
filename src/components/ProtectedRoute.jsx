@@ -6,12 +6,27 @@ const ProtectedRoute = ({
   children,
   allowedRoles = null,
   redirectTo = "/",
+  requireAdmin = false,
 }) => {
-  const { isLoggedIn, loading, role } = useAuth();
+  const { isLoggedIn, loading, role, adminIsLoggedIn, adminLoading } =
+    useAuth();
   const location = useLocation();
 
+  // Check if this is an admin protected route
+  if (requireAdmin) {
+    if (adminLoading) {
+      return null;
+    }
+
+    if (!adminIsLoggedIn) {
+      return <Navigate to="/admin" replace state={{ from: location }} />;
+    }
+
+    return children;
+  }
+
+  // Regular user protected route
   if (loading) {
-    // while auth status resolving, don't render anything to avoid flicker
     return null;
   }
 

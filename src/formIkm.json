@@ -1,0 +1,925 @@
+{
+  "fields": [
+    {
+      "name": "01. Nama Perusahaan",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "02. Nama Lengkap Kontak Person",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "03. Nomor Telp / CP Perusahaan",
+      "type": "text",
+      "required": true,
+      "pattern": "^[0-9]+$",
+      "errorMessage": "Nomor telepon harus berupa angka."
+    },
+    {
+      "name": "04. Alamat Perusahaan",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "name": "05. Provinsi Domisili Perusahaan",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "06. Kota Domisili Perusahaan",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "07. Memiliki Nomor Induk Berusaha (NIB)?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Ya",
+          "value": "ya"
+        },
+        {
+          "label": "Tidak",
+          "value": "tidak"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "Nomor Induk Berusaha (NIB)",
+      "type": "text",
+      "required": true,
+      "conditional": {
+        "field": "07. Memiliki Nomor Induk Berusaha (NIB)?",
+        "value": "ya"
+      },
+      "pattern": "^[0-9]+$",
+      "errorMessage": "NIB harus berupa angka."
+    },
+    {
+      "name": "File Nomor Induk Berusaha (NIB)",
+      "type": "file",
+      "accept": ".pdf,.jpg,.jpeg,.png",
+      "conditional": {
+        "field": "07. Memiliki Nomor Induk Berusaha (NIB)?",
+        "value": "ya"
+      }
+    },
+    {
+      "name": "08. KBLI 2 Digit",
+      "type": "select",
+      "placeholder": "Pilih KBLI 2 Digit",
+      "options": [
+        "10 - Makanan",
+        "11 - Minuman",
+        "12 - Pengolahan Tembakau",
+        "13 - Tekstil",
+        "14 - Pakaian Jadi",
+        "15 - Kulit, Barang dari Kulit, dan Alas Kaki",
+        "16 - Kayu, Barang dari Kayu, Gabus (Tidak Termasuk Furnitur), dan Barang Anyaman dari Bambu, Rotan, dan Sejenisnya",
+        "17 - Kertas dan Barang dari Kertas",
+        "18 - Percetakan dan Reproduksi Media Rekaman",
+        "20 - Bahan Kimia dan Barang Kimia",
+        "21 - Farmasi, Produk Obat Kimia, dan Obat Tradisional",
+        "22 - Karet, Barang dari Karet, dan Plastik",
+        "23 - Barang Galian Non Logam",
+        "24 - Logam Dasar",
+        "25 - Barang Logam Bukan Mesin dan Peralatannya",
+        "26 - Komputer, Barang Elektronik, dan Optik",
+        "27 - Peralatan Listrik",
+        "28 - Mesin dan Perlengkpan ytdl",
+        "29 - Kendaraan Bermotor, Trailer, dan Semi Trailer",
+        "30 - Alat Angkutan Lainnya",
+        "31 - Furnitur",
+        "32 - Pengolahan Lainnya",
+        "33 - Jasa Reparasi dan Pemasangan Mesin dan Peralatan",
+        "58 - Aktivitas Penerbitan",
+        "62 - Aktivitas Pemrograman, Konsultasi Komputer, dan Kegiatan YBDI",
+        "63 - Aktivitas Jasa Informasi",
+        "74 - Aktivitas Profesional, Ilmiah, dan Teknis Lainnya",
+        "95 - Reparasi Komputer dan Barang Keperluan Pribadi dan Perlengkapan Rumah Tangga"
+      ],
+      "required": true
+    },
+    {
+      "name": "KBLI 5 Digit",
+      "type": "text",
+      "required": true,
+      "pattern": "^[0-9]{5}$",
+      "errorMessage": "KBLI 5 Digit harus berupa angka dan terdiri dari 5 digit."
+    },
+    {
+      "name": "09. Badan Usaha",
+      "type": "select",
+      "placeholder": "Pilih Badan Usaha",
+      "options": ["PT", "CV", "Perorangan", "UD", "Koperasi", "KUB", "Sentra"],
+      "required": true
+    },
+    {
+      "name": "10. Bidang Usaha",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "11. Jenis Usaha",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Produksi Sendiri",
+          "value": "produksi_sendiri"
+        },
+        {
+          "label": "Produksi Pesan di IKM/Kerja Sama dengan IKM",
+          "value": "produksi_pesan_di_ikm"
+        },
+        {
+          "label": "Beli Produk untuk Dijual Kembali",
+          "value": "beli_produk"
+        },
+        {
+          "label": "Maklon",
+          "value": "maklon"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "12. Jumlah Tenaga Kerja",
+      "type": "radio",
+      "options": [
+        {
+          "label": "> 99 Orang",
+          "value": ">99"
+        },
+        {
+          "label": "20 - 99 Orang",
+          "value": "20-99"
+        },
+        {
+          "label": "5-19 Orang",
+          "value": "5-19"
+        },
+        {
+          "label": "1-4 Orang",
+          "value": "1-4"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "13. Nilai Investasi (Tanpa Tanah dan Bangunan)",
+      "type": "radio",
+      "options": [
+        {
+          "label": "< Rp 1 Miliar",
+          "value": "<1M"
+        },
+        {
+          "label": "Rp 1 Miliar - Rp 10 Miliar",
+          "value": "1M-10M"
+        },
+        {
+          "label": "> Rp 10 Miliar",
+          "value": ">10M"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "14. Nilai Omset Per Tahun",
+      "type": "radio",
+      "options": [
+        {
+          "label": "> Rp 50 Miliar per tahun",
+          "value": ">50M"
+        },
+        {
+          "label": "> Rp 15 miliar - Rp 50 Miliar per tahun",
+          "value": "15M-50M"
+        },
+        {
+          "label": "> Rp 2 Miliar - Rp 15 Miliar per tahun",
+          "value": "2M-15M"
+        },
+        {
+          "label": "Rp 500 Juta - Rp 2 Miliar per tahun",
+          "value": "500Jt-2M"
+        },
+        {
+          "label": "Rp 100 Juta - Rp 500 Juta per tahun",
+          "value": "100Jt-500Jt"
+        },
+        {
+          "label": "< Rp 100 Juta per tahun",
+          "value": "<100Jt"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "15. Lama Berusaha",
+      "type": "radio",
+      "options": [
+        {
+          "label": "> 5 Tahun",
+          "value": ">5"
+        },
+        {
+          "label": "3-5 Tahun",
+          "value": "3-5"
+        },
+        {
+          "label": "1-3 Tahun",
+          "value": "1-3"
+        },
+        {
+          "label": "0-1 Tahun",
+          "value": "0-1"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "16. Manajemen Usaha - Organisasi",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Bisnis memiliki struktur organisasi yang teratur dan memiliki deskripsi pekerjaan yang jelas",
+          "value": "bisnis_memiliki_struktur_organisasi_teratur_dan_deskripsi_pekerjaan_jelas"
+        },
+        {
+          "label": "Bisnis memiliki struktur organisasi yang lengkap dengan manajemen top-down",
+          "value": "bisnis_memiliki_struktur_organisasi_lengkap_dengan_manajemen_top_down"
+        },
+        {
+          "label": "Bisnis dikelola bersama 1-2 orang partner, dengan tenaga kerja terbatas",
+          "value": "bisnis_dikelola_bersama_partner_dengan_tenaga_kerja_terbatas"
+        },
+        {
+          "label": "Bisnis masih dikelola sendiri, dengan sumber daya terbatas dalam lingkup keluarga",
+          "value": "bisnis_masih_dikelola_sendiri_dengan_sumber_daya_terbatas_dalam_lingkup_keluarga"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "17. Kerjasama Kemitraan",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Melakukan Kemitraan dengan Industri Besar",
+          "value": "melakukan_kemitraan_dengan_industri_besar"
+        },
+        {
+          "label": "Melakukan Kemitraan dengan IKM",
+          "value": "melakukan_kemitraan_dengan_ikm"
+        },
+        {
+          "label": "Melakukan Kemitraan dengan Sektor Usaha Lainnya (Misalnya BUMN/Perbankan/Sektor Jasa)",
+          "value": "melakukan_kemitraan_dengan_sektor_usaha_lainnya"
+        },
+        {
+          "label": "Tidak Pernah Melakukan Kemitraan",
+          "value": "tidak_pernah_melakukan_kemitraan"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "18. Nomor NPWP Usaha",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "19. NIK",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "20. Akun SIINas",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah Memiliki",
+          "value": "sudah_memiliki"
+        },
+        {
+          "label": "Belum Memiliki",
+          "value": "belum_memiliki"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "21. Sertifikat TKDN",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah Memiliki",
+          "value": "sudah_memiliki"
+        },
+        {
+          "label": "Belum Memiliki",
+          "value": "belum_memiliki"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "22. Kategori Produk",
+      "type": "select",
+      "placeholder": "Pilih Kategori Produk",
+      "options": [
+        {
+          "label": "Alat Ankut",
+          "value": "alat_angkut"
+        },
+        {
+          "label": "Aneka (Perhiasan, Mainan Anak, Alat Tulis, Alat Musik, Alat Olahraga, dsb)",
+          "value": "aneka"
+        },
+        {
+          "label": "Bahan Bangunan",
+          "value": "bahan_bangunan"
+        },
+        {
+          "label": "Elektronika dan Telematika",
+          "value": "elektronika_dan_telematika"
+        },
+        {
+          "label": "Furnitur",
+          "value": "furnitur"
+        },
+        {
+          "label": "Kerajinan",
+          "value": "kerajinan"
+        },
+        {
+          "label": "Kimia (termasuk Kosmetik dan Minyak Atsiri)",
+          "value": "kimia"
+        },
+        {
+          "label": "Logam",
+          "value": "logam"
+        },
+        {
+          "label": "Mesin",
+          "value": "mesin"
+        },
+        {
+          "label": "Pangan (Makanan dan Minuman)",
+          "value": "makanan_dan_minuman"
+        },
+        {
+          "label": "Sandang (Tekstil, Fesyen, Batik, Tenun)",
+          "value": "sandang"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "23. Merek Produk",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah Ada",
+          "value": "sudah_ada"
+        },
+        {
+          "label": "Belum Ada",
+          "value": "belum_ada"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "24. Sudah ada Sertifikat Merek? (Terdaftar di Ditjen Kekayaan Intelektual)",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah memiliki sertifikat merek dan masih berlaku",
+          "value": "sudah_memiliki_sertifikat_merek_dan_masih_berlaku"
+        },
+        {
+          "label": "Sedang dalam proses pendaftaran/perpanjangan sertifikat merek",
+          "value": "sedang_dalam_proses_pendaftaran_perpanjangan_sertifikat_merek"
+        },
+        {
+          "label": "Sudah memiliki sertifikat merek namun kadaluwarsa",
+          "value": "sudah_memiliki_sertifikat_merek_namun_kadaluwarsa"
+        },
+        {
+          "label": "Merek belum terdaftar",
+          "value": "merek_belum_terdaftar"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "25. Foto Produk Tanpa Kemasan",
+      "type": "file",
+      "accept": ".jpg,.jpeg,.png",
+      "required": false
+    },
+    {
+      "name": "26. Sumber Bahan Baku",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Diperoleh dari alam sekitar lokasi produksi",
+          "value": "diperoleh_dari_alam_sekitar_lokasi_produksi"
+        },
+        {
+          "label": "Diperoleh dari supllier di Provinsi",
+          "value": "diperoleh_dari_supllier_di_provinsi"
+        },
+        {
+          "label": "Diperoleh dari supplier di luar Provinsi",
+          "value": "diperoleh_dari_supplier_di_luar_provinsi"
+        },
+        {
+          "label": "Impor",
+          "value": "impor"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "27. Penggunaan Teknologi",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Manual/Handmande",
+          "value": "manual_handmade"
+        },
+        {
+          "label": "Mekanisasi",
+          "value": "mekanisasi"
+        },
+        {
+          "label": "Komputerisasi",
+          "value": "komputerisasi"
+        },
+        {
+          "label": "Otomatisasi",
+          "value": "otomatisasi"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "28. Kemasan Produk",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Kemasan dengan label sesuai dengan regulasi yang berlaku",
+          "value": "kemasan_dengan_label_sesuai_dengan_regulasi_yang_berlaku"
+        },
+        {
+          "label": "Kemasan dengan label",
+          "value": "kemasan_dengan_label"
+        },
+        {
+          "label": "Kemasan sederhana",
+          "value": "kemasan_sederhana"
+        },
+        {
+          "label": "Belum ada kemasan",
+          "value": "belum_ada_kemasan"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "29. Foto Kemasan Produk",
+      "type": "file",
+      "accept": ".jpg,.jpeg,.png",
+      "required": false
+    },
+    {
+      "name": "30. Standardisasi / Keamanan Produk",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah memiliki SOP Produksi, tim quality control, menerapkan standarisasi sukarela (HACCP, ISO Manajemen Mutu)",
+          "value": "sudah_memiliki_sop_produksi_tim_quality_control_menerapkan_standarisasi_sukarela"
+        },
+        {
+          "label": "Sudah memiliki SOP Produksi dan tim quality control",
+          "value": "sudah_memiliki_sop_produksi_dan_tim_quality_control"
+        },
+        {
+          "label": "Sudah memiliki SOP Produksi",
+          "value": "sudah_memiliki_sop_produksi"
+        },
+        {
+          "label": "Belum memiliki SOP Produksi",
+          "value": "belum_memiliki_sop_produksi"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "31. Bagaimana Anda membuang limbah/sampah hasil proses produksi?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah memiliki sarana pengelolaan limbah/sampah",
+          "value": "sudah_memiliki_sarana_pengelolaan_limbah_sampah"
+        },
+        {
+          "label": "Didaur ulang",
+          "value": "didaur_ulang"
+        },
+        {
+          "label": "Dibuang ke tempat sampah",
+          "value": "dibuang_ke_tempat_sampah"
+        },
+        {
+          "label": "Tidak dilakukan pengelolaan limbah/sampah",
+          "value": "tidak_dilakukan_pengelolaan_limbah_sampah"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "32. Jangkauan Pemasaran",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah Ekspor",
+          "value": "ekspor"
+        },
+        {
+          "label": "Sudah Nasional",
+          "value": "nasional"
+        },
+        {
+          "label": "Sudah Skala Provinsi",
+          "value": "provinsi"
+        },
+        {
+          "label": "Masih Dalam Kota/Kabupaten",
+          "value": "kota_kabupaten"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "33. Metode Pemasaran?",
+      "type": "checkbox",
+      "options": [
+        {
+          "label": "Pasar digital",
+          "value": "pasar_digital"
+        },
+        {
+          "label": "Memiliki distributor/Pasar modern",
+          "value": "memiliki_distributor_pasar_modern"
+        },
+        {
+          "label": "Memiliki toko/showroom",
+          "value": "memiliki_toko_showroom"
+        },
+        {
+          "label": "Berjualan di rumah",
+          "value": "berjualan_di_rumah"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "34. Strategi Pemasaran",
+      "type": "checkbox",
+      "options": [
+        {
+          "label": "Bisnis telah memanfaatkan influencer",
+          "value": "bisnis_telat_memanfaatkan_influencer"
+        },
+        {
+          "label": "Pemasaran Online dan Offline, sudah memanfaatkan iklan digital",
+          "value": "pemasaran_online_offline"
+        },
+        {
+          "label": "Pemasaran Offline, mengikuti event, pameran dan kompetisi",
+          "value": "pemasaran_offline_mengikuti_event_pameran_dan_kompetisi"
+        },
+        {
+          "label": "Konvensional/tradisional mulut ke mulut",
+          "value": "konvensional_tradisional_mulut_ke_mulut"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "35. Apakah Anda memiliki profil perusahaan?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Ya",
+          "value": "ya"
+        },
+        {
+          "label": "Tidak",
+          "value": "tidak"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "Profil perusahaan yang dimiliki dalam bentuk?",
+      "type": "checkbox",
+      "conditional": {
+        "field": "35. Apakah Anda memiliki profil perusahaan?",
+        "value": "ya"
+      },
+      "options": [
+        {
+          "label": "Brosur/Leaflet",
+          "value": "brosur_leaflet"
+        },
+        {
+          "label": "Katalog Produk",
+          "value": "katalog_produk"
+        },
+        {
+          "label": "Profil perusahaan",
+          "value": "profil_perusahaan"
+        },
+        {
+          "label": "Video profil perusahaan",
+          "value": "video_profil_perusahaan"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "36. E-Katalog",
+      "type": "checkbox",
+      "options": [
+        {
+          "label": "Terdaftar di E-Katalog LKPP",
+          "value": "terdaftar_di_e_katalog_lkpp"
+        },
+        {
+          "label": "Masuk dalam e-katalog daerah",
+          "value": "masuk_dalam_e_katalog_daerah"
+        },
+        {
+          "label": "Masuk dalam e-katalog sektoral",
+          "value": "masuk_dalam_e_katalog_sektoral"
+        },
+        {
+          "label": "Belum masuk dalam e-katalog",
+          "value": "belum_masuk_dalam_e_katalog"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "37. Memiliki tim/personil yang akan mengelola media pemasaran online",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Ya",
+          "value": "ya"
+        },
+        {
+          "label": "Tidak",
+          "value": "tidak"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "38. Kecepatan akses internet di lokasi perusahaan",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Cepat",
+          "value": "cepat"
+        },
+        {
+          "label": "Sedang",
+          "value": "sedang"
+        },
+        {
+          "label": "Lambat",
+          "value": "lambat"
+        },
+        {
+          "label": "Tidak ada akses internet",
+          "value": "tidak_ada_akses_internet"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "39. Apakah perusahaan Anda telah memiliki infrastruktur digital?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah",
+          "value": "sudah"
+        },
+        {
+          "label": "Belum",
+          "value": "belum"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "40. Media sosial yang dimiliki (Whatsapp, Facebook, Instagram, Tiktok, dan Twitter)",
+      "type": "radio",
+      "options": [
+        {
+          "label": "> 3 Media Sosial",
+          "value": ">3"
+        },
+        {
+          "label": "3 Media Sosial",
+          "value": "3"
+        },
+        {
+          "label": "1-2 Media Sosial",
+          "value": "1-2"
+        },
+        {
+          "label": "Tidak Memiliki Media Sosial",
+          "value": "0"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "41. Isi Link Toko Digital di Marketplace",
+      "fields": [
+        {
+          "name": "Indotrading",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Tokopedia",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Tiktok Shop",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Blibli",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Shopee",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "Lainnya",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "42. Dalam pemasaran, Saudara telah melakukan optimasi dengan Search Engine Optimization (SEO)?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah",
+          "value": "sudah"
+        },
+        {
+          "label": "Belum",
+          "value": "belum"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "43. Dalam pemasaran, Anda melakukan riset pasar menggunakan tools analytics?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah",
+          "value": "sudah"
+        },
+        {
+          "label": "Belum",
+          "value": "belum"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "44. Apakah memiliki website perusahaan?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Ya",
+          "value": "ya"
+        },
+        {
+          "label": "Tidak Punya",
+          "value": "tidak_punya"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "Silahkan ketikkan alamat website perusahaan Anda",
+      "type": "text",
+      "conditional": {
+        "field": "44. Apakah memiliki website perusahaan?",
+        "value": "ya"
+      },
+      "required": true
+    },
+    {
+      "name": "45. Memisahkan keuangan pribadi dan perusahaan?",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Ya",
+          "value": "ya"
+        },
+        {
+          "label": "Tidak",
+          "value": "tidak"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "46. Pencatatan Keuangan Perusahaan",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Sudah memiliki pembukuan bisnis yang tersusun rapih secara digital menggunakan aplikasi/software keuangan",
+          "value": "sudah_memiliki_pembukuan_bisnis_tersusun_rapih_digital_menggunakan_aplikasi_software_keuangan"
+        },
+        {
+          "label": "Sudah memiliki pembukuan keuangan secara digital menggunakan excel/spreadsheet",
+          "value": "sudah_memiliki_pembukuan_keuangan_secara_digital_menggunakan_excel_spreadsheet"
+        },
+        {
+          "label": "Sudah memiliki pembukuan keuangan secara manual",
+          "value": "sudah_memiliki_pembukuan_keuangan_secara_manual"
+        },
+        {
+          "label": "Belum memiliki pembukuan keuangan yang tersusun rapih",
+          "value": "belum"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "47. Sistem Pembayaran yang Digunakan",
+      "type": "checkbox",
+      "options": [
+        {
+          "label": "Memiliki EDC",
+          "value": "edc"
+        },
+        {
+          "label": "Memiliki QRIS",
+          "value": "qris"
+        },
+        {
+          "label": "Menerima bank transfer",
+          "value": "bank_transfer"
+        },
+        {
+          "label": "Hanya menerima pembayaran tunai",
+          "value": "hanya_tunai"
+        }
+      ],
+      "required": true
+    },
+    {
+      "name": "Jenis Peserta",
+      "type": "radio",
+      "options": [
+        {
+          "label": "Pelaku Usaha",
+          "value": "pelaku_usaha",
+          "selected": true
+        },
+        {
+          "label": "Non Pelaku Usaha",
+          "value": "non_pelaku_usaha"
+        }
+      ],
+      "readonly": true,
+      "required": true
+    }
+  ]
+}

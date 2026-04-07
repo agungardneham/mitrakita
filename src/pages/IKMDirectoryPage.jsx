@@ -634,104 +634,104 @@ const IKMDirectoryPage = () => {
   };
 
   // Export to Excel
-  const exportToExcel = () => {
-    const exportData = [];
-    const seen = new Set(); // To avoid duplicates
+  // const exportToExcel = () => {
+  //   const exportData = [];
+  //   const seen = new Set(); // To avoid duplicates
 
-    filteredIkm.forEach((ikm) => {
-      const fullName = ikm.fullName || "-";
-      const businessName = ikm.businessName || "-";
-      const phone = ikm.phone || "-";
+  //   filteredIkm.forEach((ikm) => {
+  //     const fullName = ikm.fullName || "-";
+  //     const businessName = ikm.businessName || "-";
+  //     const phone = ikm.phone || "-";
 
-      const officeAddr = ikm.officeAddress || "-";
-      const factoryAddr = ikm.factoryAddress || "-";
-      const officeCity = ikm.officeCity || "-";
-      const factoryCity = ikm.factoryCity || "-";
+  //     const officeAddr = ikm.officeAddress || "-";
+  //     const factoryAddr = ikm.factoryAddress || "-";
+  //     const officeCity = ikm.officeCity || "-";
+  //     const factoryCity = ikm.factoryCity || "-";
 
-      // Extract KBLI digits
-      const kbli5Digit = ikm.kbli || "-";
-      const kbli2Digit = ikm.kbli ? String(ikm.kbli).substring(0, 2) : "-";
+  //     // Extract KBLI digits
+  //     const kbli5Digit = ikm.kbli || "-";
+  //     const kbli2Digit = ikm.kbli ? String(ikm.kbli).substring(0, 2) : "-";
 
-      const addressesSame =
-        officeAddr === factoryAddr && officeCity === factoryCity;
+  //     const addressesSame =
+  //       officeAddr === factoryAddr && officeCity === factoryCity;
 
-      if (addressesSame) {
-        // Single row for office address
-        const uniqueKey = `${phone}|${businessName}|${officeAddr}|${officeCity}`;
-        if (!seen.has(uniqueKey)) {
-          seen.add(uniqueKey);
-          exportData.push({
-            "No.": exportData.length + 1,
-            "Kontak Person": fullName,
-            "Nama Perusahaan": businessName,
-            "No. Telp": phone,
-            Alamat: officeAddr,
-            "Kabupaten/Kota": officeCity,
-            "KBLI 5 Digit": kbli5Digit,
-            "KBLI 2 Digit": kbli2Digit,
-          });
-        }
-      } else {
-        // Office address row
-        const officeKey = `${phone}|${businessName}|${officeAddr}|${officeCity}`;
-        if (!seen.has(officeKey)) {
-          seen.add(officeKey);
-          exportData.push({
-            "No.": exportData.length + 1,
-            "Kontak Person": fullName,
-            "Nama Perusahaan": businessName,
-            "No. Telp": phone,
-            Alamat: officeAddr,
-            "Kabupaten/Kota": officeCity,
-            "KBLI 5 Digit": kbli5Digit,
-            "KBLI 2 Digit": kbli2Digit,
-          });
-        }
+  //     if (addressesSame) {
+  //       // Single row for office address
+  //       const uniqueKey = `${phone}|${businessName}|${officeAddr}|${officeCity}`;
+  //       if (!seen.has(uniqueKey)) {
+  //         seen.add(uniqueKey);
+  //         exportData.push({
+  //           "No.": exportData.length + 1,
+  //           "Kontak Person": fullName,
+  //           "Nama Perusahaan": businessName,
+  //           "No. Telp": phone,
+  //           Alamat: officeAddr,
+  //           "Kabupaten/Kota": officeCity,
+  //           "KBLI 5 Digit": kbli5Digit,
+  //           "KBLI 2 Digit": kbli2Digit,
+  //         });
+  //       }
+  //     } else {
+  //       // Office address row
+  //       const officeKey = `${phone}|${businessName}|${officeAddr}|${officeCity}`;
+  //       if (!seen.has(officeKey)) {
+  //         seen.add(officeKey);
+  //         exportData.push({
+  //           "No.": exportData.length + 1,
+  //           "Kontak Person": fullName,
+  //           "Nama Perusahaan": businessName,
+  //           "No. Telp": phone,
+  //           Alamat: officeAddr,
+  //           "Kabupaten/Kota": officeCity,
+  //           "KBLI 5 Digit": kbli5Digit,
+  //           "KBLI 2 Digit": kbli2Digit,
+  //         });
+  //       }
 
-        // Factory address row
-        const factoryKey = `${phone}|${businessName}|${factoryAddr}|${factoryCity}`;
-        if (!seen.has(factoryKey)) {
-          seen.add(factoryKey);
-          exportData.push({
-            "No.": exportData.length + 1,
-            "Kontak Person": fullName,
-            "Nama Perusahaan": businessName,
-            "No. Telp": phone,
-            Alamat: factoryAddr,
-            "Kabupaten/Kota": factoryCity,
-            "KBLI 5 Digit": kbli5Digit,
-            "KBLI 2 Digit": kbli2Digit,
-          });
-        }
-      }
-    });
+  //       // Factory address row
+  //       const factoryKey = `${phone}|${businessName}|${factoryAddr}|${factoryCity}`;
+  //       if (!seen.has(factoryKey)) {
+  //         seen.add(factoryKey);
+  //         exportData.push({
+  //           "No.": exportData.length + 1,
+  //           "Kontak Person": fullName,
+  //           "Nama Perusahaan": businessName,
+  //           "No. Telp": phone,
+  //           Alamat: factoryAddr,
+  //           "Kabupaten/Kota": factoryCity,
+  //           "KBLI 5 Digit": kbli5Digit,
+  //           "KBLI 2 Digit": kbli2Digit,
+  //         });
+  //       }
+  //     }
+  //   });
 
-    // Re-number after removing duplicates
-    exportData.forEach((item, idx) => {
-      item["No."] = idx + 1;
-    });
+  //   // Re-number after removing duplicates
+  //   exportData.forEach((item, idx) => {
+  //     item["No."] = idx + 1;
+  //   });
 
-    // Create workbook
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Direktori IKM");
+  //   // Create workbook
+  //   const worksheet = XLSX.utils.json_to_sheet(exportData);
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Direktori IKM");
 
-    // Set column widths
-    worksheet["!cols"] = [
-      { wch: 5 }, // No.
-      { wch: 20 }, // Kontak Person
-      { wch: 25 }, // Nama Perusahaan
-      { wch: 15 }, // No. Telp
-      { wch: 35 }, // Alamat
-      { wch: 20 }, // Kabupaten/Kota
-      { wch: 12 }, // KBLI 5 Digit
-      { wch: 12 }, // KBLI 2 Digit
-    ];
+  //   // Set column widths
+  //   worksheet["!cols"] = [
+  //     { wch: 5 }, // No.
+  //     { wch: 20 }, // Kontak Person
+  //     { wch: 25 }, // Nama Perusahaan
+  //     { wch: 15 }, // No. Telp
+  //     { wch: 35 }, // Alamat
+  //     { wch: 20 }, // Kabupaten/Kota
+  //     { wch: 12 }, // KBLI 5 Digit
+  //     { wch: 12 }, // KBLI 2 Digit
+  //   ];
 
-    // Download
-    const fileName = `Direktori_IKM_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-  };
+  //   // Download
+  //   const fileName = `Direktori_IKM_${new Date().toISOString().split("T")[0]}.xlsx`;
+  //   XLSX.writeFile(workbook, fileName);
+  // };
 
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -960,7 +960,7 @@ const IKMDirectoryPage = () => {
               IKM dari total <span className="font-bold">{ikmList.length}</span>{" "}
               IKM terdaftar
             </p>
-            <button
+            {/* <button
               onClick={exportToExcel}
               disabled={filteredIkm.length === 0}
               className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all ${
@@ -973,7 +973,7 @@ const IKMDirectoryPage = () => {
             >
               <Download className="w-5 h-5" />
               <span>Ekspor ke Excel</span>
-            </button>
+            </button> */}
           </div>
         </div>
 

@@ -9,8 +9,11 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import IKMDirectoryPage from "./pages/IKMDirectoryPage";
 import ResearchPage from "./pages/ResearchPage";
 import IKMDashboard from "./pages/IKMDashboard";
+import IKMSurvey from "./pages/IKMSurvey";
 import AcademicianDashboard from "./pages/AcademicianDashboard";
 import UserDashboard from "./pages/UserDashboard";
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserDirectoryPage from "./pages/UserDirectoryPage";
 import { User } from "lucide-react";
@@ -44,6 +47,14 @@ function App() {
             }
           />
           <Route
+            path="/dashboard/survey"
+            element={
+              <ProtectedRoute allowedRoles={["ikm"]}>
+                <IKMSurvey />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/dashboard/akademisi"
             element={
               <ProtectedRoute allowedRoles={["academician"]}>
@@ -64,6 +75,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <UserDirectoryPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLoginPage />} />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />

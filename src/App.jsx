@@ -10,6 +10,7 @@ import IKMDirectoryPage from "./pages/IKMDirectoryPage";
 import ResearchPage from "./pages/ResearchPage";
 import IKMDashboard from "./pages/IKMDashboard";
 import IKMSurvey from "./pages/IKMSurvey";
+import SurveyCompletionPage from "./pages/SurveyCompletionPage";
 import AcademicianDashboard from "./pages/AcademicianDashboard";
 import UserDashboard from "./pages/UserDashboard";
 import AdminLoginPage from "./pages/AdminLoginPage";
@@ -51,6 +52,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["ikm"]}>
                 <IKMSurvey />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/survey-completion"
+            element={
+              <ProtectedRoute allowedRoles={["ikm"]}>
+                <SurveyCompletionPage />
               </ProtectedRoute>
             }
           />

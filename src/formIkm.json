@@ -3,34 +3,46 @@
     {
       "name": "01. Nama Perusahaan",
       "type": "text",
-      "required": true
+      "required": true,
+      "readonly": true,
+      "firestoreField": "businessName"
     },
     {
       "name": "02. Nama Lengkap Kontak Person",
       "type": "text",
-      "required": true
+      "required": true,
+      "readonly": true,
+      "firestoreField": "fullName"
     },
     {
       "name": "03. Nomor Telp / CP Perusahaan",
       "type": "text",
       "required": true,
+      "readonly": true,
+      "firestoreField": "phone",
       "pattern": "^[0-9]+$",
       "errorMessage": "Nomor telepon harus berupa angka."
     },
     {
       "name": "04. Alamat Perusahaan",
       "type": "textarea",
-      "required": true
+      "required": true,
+      "readonly": true,
+      "firestoreField": "factoryAddress"
     },
     {
       "name": "05. Provinsi Domisili Perusahaan",
       "type": "text",
-      "required": true
+      "required": true,
+      "readonly": true,
+      "firestoreField": "factoryProvince"
     },
     {
       "name": "06. Kota Domisili Perusahaan",
       "type": "text",
-      "required": true
+      "required": true,
+      "readonly": true,
+      "firestoreField": "factoryCity"
     },
     {
       "name": "07. Memiliki Nomor Induk Berusaha (NIB)?",
@@ -55,8 +67,8 @@
         "field": "07. Memiliki Nomor Induk Berusaha (NIB)?",
         "value": "ya"
       },
-      "pattern": "^[0-9]+$",
-      "errorMessage": "NIB harus berupa angka."
+      "readonly": true,
+      "firestoreField": "nib"
     },
     {
       "name": "File Nomor Induk Berusaha (NIB)",
@@ -71,6 +83,8 @@
       "name": "08. KBLI 2 Digit",
       "type": "select",
       "placeholder": "Pilih KBLI 2 Digit",
+      "readonly": true,
+      "firestoreField": "kbli",
       "options": [
         "10 - Makanan",
         "11 - Minuman",
@@ -89,7 +103,7 @@
         "25 - Barang Logam Bukan Mesin dan Peralatannya",
         "26 - Komputer, Barang Elektronik, dan Optik",
         "27 - Peralatan Listrik",
-        "28 - Mesin dan Perlengkpan ytdl",
+        "28 - Mesin dan Perlengkapan ytdl",
         "29 - Kendaraan Bermotor, Trailer, dan Semi Trailer",
         "30 - Alat Angkutan Lainnya",
         "31 - Furnitur",
@@ -107,8 +121,8 @@
       "name": "KBLI 5 Digit",
       "type": "text",
       "required": true,
-      "pattern": "^[0-9]{5}$",
-      "errorMessage": "KBLI 5 Digit harus berupa angka dan terdiri dari 5 digit."
+      "readonly": true,
+      "firestoreField": "kbli"
     },
     {
       "name": "09. Badan Usaha",
@@ -333,7 +347,7 @@
       "placeholder": "Pilih Kategori Produk",
       "options": [
         {
-          "label": "Alat Ankut",
+          "label": "Alat Angkut",
           "value": "alat_angkut"
         },
         {
@@ -732,6 +746,15 @@
       "required": true
     },
     {
+      "name": "Infrastruktur digital yang dimiliki perusahaan:",
+      "type": "text",
+      "conditional": {
+        "field": "39. Apakah perusahaan Anda telah memiliki infrastruktur digital?",
+        "value": "sudah"
+      },
+      "required": false
+    },
+    {
       "name": "40. Media sosial yang dimiliki (Whatsapp, Facebook, Instagram, Tiktok, dan Twitter)",
       "type": "radio",
       "options": [
@@ -841,7 +864,9 @@
         "field": "44. Apakah memiliki website perusahaan?",
         "value": "ya"
       },
-      "required": true
+      "required": true,
+      "readonly": true,
+      "firestoreField": "website"
     },
     {
       "name": "45. Memisahkan keuangan pribadi dan perusahaan?",

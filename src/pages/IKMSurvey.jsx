@@ -5,13 +5,15 @@ import { supabase } from "../supabaseClient";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { ArrowLeft, Upload, CheckCircle, AlertCircle } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import formConfig from "../formIkm.json";
 
 const IKMSurvey = () => {
   const { user, role } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const db = getFirestore();
+  const isEditMode = searchParams.get("edit") === "true";
 
   const [formData, setFormData] = useState({});
   const [loadingData, setLoadingData] = useState(true);
@@ -27,8 +29,94 @@ const IKMSurvey = () => {
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const userData = userDoc.data();
+
+        // Check if survey already exists and redirect to completion page
+        // UNLESS user is in edit mode
+        if (userData?.survey && !isEditMode) {
+          // Survey already filled and not in edit mode, redirect to completion page
+          navigate("/survey-completion");
+          return;
+        }
+
+        // Initialize formData with registration data
+        const initialFormData = { ...formData };
+
+        // Map Firestore registration fields to form fields
+        if (userData) {
+          if (userData.businessName) {
+            initialFormData["01. Nama Perusahaan"] = userData.businessName;
+          }
+          if (userData.fullName) {
+            initialFormData["02. Nama Lengkap Kontak Person"] =
+              userData.fullName;
+          }
+          if (userData.phone) {
+            initialFormData["03. Nomor Telp / CP Perusahaan"] = userData.phone;
+          }
+          if (userData.factoryAddress) {
+            initialFormData["04. Alamat Perusahaan"] = userData.factoryAddress;
+          }
+          if (userData.factoryProvince) {
+            initialFormData["05. Provinsi Domisili Perusahaan"] =
+              userData.factoryProvince;
+          }
+          if (userData.factoryCity) {
+            initialFormData["06. Kota Domisili Perusahaan"] =
+              userData.factoryCity;
+          }
+          if (userData.kbli) {
+            initialFormData["KBLI 5 Digit"] = userData.kbli;
+
+            // Extract 2 digit KBLI and find matching option for "08. KBLI 2 Digit"
+            const kbli2Digit = userData.kbli.toString().substring(0, 2);
+            const kbli2DigitField = formConfig.fields.find(
+              (field) => field.name === "08. KBLI 2 Digit",
+            );
+
+            if (kbli2DigitField && kbli2DigitField.options) {
+              const matchedOption = kbli2DigitField.options.find((option) =>
+                option.startsWith(kbli2Digit + " -"),
+              );
+              if (matchedOption) {
+                initialFormData["08. KBLI 2 Digit"] = matchedOption;
+              }
+            }
+          }
+          if (userData.nib) {
+            initialFormData["Nomor Induk Berusaha (NIB)"] = userData.nib;
+            // Auto-select "Ya" for NIB question if data exists
+            initialFormData["07. Memiliki Nomor Induk Berusaha (NIB)?"] = "ya";
+          }
+          if (userData.website) {
+            initialFormData[
+              "Silahkan ketikkan alamat website perusahaan Anda"
+            ] = userData.website;
+            // Auto-select "Ya" for website question if data exists
+            initialFormData["44. Apakah memiliki website perusahaan?"] = "ya";
+          }
+        }
+
+        // Set default values for fields with "selected" property
+        formConfig.fields.forEach((field) => {
+          if (
+            field.type === "radio" &&
+            field.options &&
+            !initialFormData[field.name]
+          ) {
+            const selectedOption = field.options.find(
+              (option) => option.selected,
+            );
+            if (selectedOption) {
+              initialFormData[field.name] = selectedOption.value;
+            }
+          }
+        });
+
+        // Load existing survey data if available
         if (userData?.survey) {
-          setFormData(userData.survey);
+          setFormData({ ...initialFormData, ...userData.survey });
+        } else {
+          setFormData(initialFormData);
         }
         setLoadingData(false);
       } catch (error) {
@@ -37,10 +125,13 @@ const IKMSurvey = () => {
       }
     };
     loadSurveyData();
-  }, [user, db]);
+  }, [user, db, isEditMode]);
 
   // Handle text, textarea, and select input
-  const handleInputChange = (fieldName, value) => {
+  const handleInputChange = (fieldName, value, isReadOnly) => {
+    // Don't allow changes to readonly fields
+    if (isReadOnly) return;
+
     setFormData((prev) => ({
       ...prev,
       [fieldName]: value,
@@ -48,7 +139,10 @@ const IKMSurvey = () => {
   };
 
   // Handle radio button change
-  const handleRadioChange = (fieldName, value) => {
+  const handleRadioChange = (fieldName, value, isReadOnly) => {
+    // Don't allow changes to readonly fields
+    if (isReadOnly) return;
+
     setFormData((prev) => ({
       ...prev,
       [fieldName]: value,
@@ -185,7 +279,7 @@ const IKMSurvey = () => {
         "Survey berhasil disimpan! Anda akan dialihkan kembali...",
       );
       setTimeout(() => {
-        navigate("/dashboard/ikm");
+        navigate("/survey-completion");
       }, 2000);
     } catch (error) {
       console.error("Error saving survey:", error);
@@ -225,14 +319,19 @@ const IKMSurvey = () => {
               className="text-3xl md:text-4xl font-bold text-gray-800 mb-2"
               style={{ fontFamily: "Poppins, sans-serif" }}
             >
-              Form Survey IKM
+              {isEditMode ? "Edit Survey IKM" : "Form Survey IKM"}
             </h1>
             <p
               className="text-gray-600"
               style={{ fontFamily: "Open Sans, sans-serif" }}
             >
-              Lengkapi informasi detail tentang usaha Anda untuk meningkatkan
-              profil bisnis
+              Data dan informasi yang Anda isikan dalam formulir ini akan
+              digunakan untuk keperluan pengolahan data direktori IKM. Kami
+              menjamin bahwa seluruh data pribadi Anda dikelola secara aman,
+              rahasia, dan sesuai dengan ketentuan Undang-Undang Nomor 27 Tahun
+              2022 tentang Perlindungan Data Pribadi (UU PDP). Informasi Anda
+              tidak akan disebarkan, diperjualbelikan, atau digunakan di luar
+              kepentingan layanan ini tanpa persetujuan Anda.
             </p>
           </div>
 
@@ -283,11 +382,20 @@ const IKMSurvey = () => {
                         <textarea
                           value={formData[field.name] || ""}
                           onChange={(e) =>
-                            handleInputChange(field.name, e.target.value)
+                            handleInputChange(
+                              field.name,
+                              e.target.value,
+                              field.readonly,
+                            )
                           }
                           placeholder={field.placeholder || ""}
                           rows={4}
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          disabled={field.readonly}
+                          className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 ${
+                            field.readonly
+                              ? "border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed"
+                              : "border-gray-300 focus:ring-green-500"
+                          }`}
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                           required={field.required}
                         />
@@ -295,9 +403,18 @@ const IKMSurvey = () => {
                         <select
                           value={formData[field.name] || ""}
                           onChange={(e) =>
-                            handleInputChange(field.name, e.target.value)
+                            handleInputChange(
+                              field.name,
+                              e.target.value,
+                              field.readonly,
+                            )
                           }
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                          disabled={field.readonly}
+                          className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 bg-white ${
+                            field.readonly
+                              ? "border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed"
+                              : "border-gray-300 focus:ring-green-500"
+                          }`}
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                           required={field.required}
                         >
@@ -328,10 +445,19 @@ const IKMSurvey = () => {
                           type="text"
                           value={formData[field.name] || ""}
                           onChange={(e) =>
-                            handleInputChange(field.name, e.target.value)
+                            handleInputChange(
+                              field.name,
+                              e.target.value,
+                              field.readonly,
+                            )
                           }
                           placeholder={field.placeholder || ""}
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          disabled={field.readonly}
+                          className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 ${
+                            field.readonly
+                              ? "border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed"
+                              : "border-gray-300 focus:ring-green-500"
+                          }`}
                           style={{ fontFamily: "Open Sans, sans-serif" }}
                           required={field.required}
                         />
@@ -351,11 +477,19 @@ const IKMSurvey = () => {
                           <span className="text-red-500 ml-1">*</span>
                         )}
                       </label>
-                      <div className="space-y-2 mt-3">
+                      <div
+                        className={`space-y-2 mt-3 ${
+                          field.readonly ? "opacity-75" : ""
+                        }`}
+                      >
                         {field.options.map((option) => (
                           <label
                             key={option.value}
-                            className="flex items-center cursor-pointer"
+                            className={`flex items-center ${
+                              field.readonly
+                                ? "cursor-not-allowed opacity-60"
+                                : "cursor-pointer"
+                            }`}
                           >
                             <input
                               type="radio"
@@ -363,13 +497,26 @@ const IKMSurvey = () => {
                               value={option.value}
                               checked={formData[field.name] === option.value}
                               onChange={(e) =>
-                                handleRadioChange(field.name, e.target.value)
+                                handleRadioChange(
+                                  field.name,
+                                  e.target.value,
+                                  field.readonly,
+                                )
                               }
-                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+                              disabled={field.readonly}
+                              className={`h-4 w-4 border-gray-300 ${
+                                field.readonly
+                                  ? "text-gray-400 cursor-not-allowed"
+                                  : "text-green-600 focus:ring-green-500"
+                              }`}
                               required={field.required}
                             />
                             <span
-                              className="ml-3 text-gray-700"
+                              className={`ml-3 ${
+                                field.readonly
+                                  ? "text-gray-500"
+                                  : "text-gray-700"
+                              }`}
                               style={{ fontFamily: "Open Sans, sans-serif" }}
                             >
                               {option.label}
@@ -543,7 +690,7 @@ const IKMSurvey = () => {
                                   e.target.value,
                                 )
                               }
-                              placeholder={`Link ${nestedField.name}`}
+                              placeholder={`isi dengan tanda "-" atau "Belum Ada" jika tidak memiliki`}
                               className="w-full px-4 py-2 rounded-lg border-2 border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                               style={{ fontFamily: "Open Sans, sans-serif" }}
                             />

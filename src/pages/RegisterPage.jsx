@@ -23,7 +23,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../firebase-config";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 const RegisterPage = () => {
@@ -200,7 +200,39 @@ const RegisterPage = () => {
         selectedRole === "academician"
           ? "/dashboard/akademisi"
           : `/dashboard/${selectedRole}`;
-      navigate(dashboardPath);
+
+      // Wait for Firebase to update auth state by checking if user data is properly stored
+      const waitForAuthUpdate = async () => {
+        let retries = 0;
+        const maxRetries = 10; // Max 5 seconds (10 * 500ms)
+
+        while (retries < maxRetries) {
+          try {
+            // Check if current user exists and Firestore data is ready
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              const db = getFirestore();
+              const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+              if (userDoc.exists() && userDoc.data().role === selectedRole) {
+                // Auth is properly updated, safe to navigate
+                navigate(dashboardPath);
+                return;
+              }
+            }
+          } catch (error) {
+            console.error("Error checking auth state:", error);
+          }
+
+          // Wait 500ms before retrying
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          retries++;
+        }
+
+        // If we reach here, still navigate (fallback)
+        navigate(dashboardPath);
+      };
+
+      waitForAuthUpdate();
     } catch (error) {
       console.error("Registration error details:", {
         code: error.code,

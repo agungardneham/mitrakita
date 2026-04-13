@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,16 +15,30 @@ import {
 import * as XLSX from "xlsx";
 import db from "../firebase-config";
 import { collection, query, getDocs, orderBy, limit } from "firebase/firestore";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 // import Navbar from "../components/Navbar";
 // import Footer from "../components/Footer";
 
 const AdminDashboard = () => {
   const { adminUser, adminLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("management");
   const [showEditModal, setShowEditModal] = useState(false);
   const [editType, setEditType] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activityPeriod, setActivityPeriod] = useState("1m"); // 1m, 3m, 6m, 1y
+  const [regionalFilter, setRegionalFilter] = useState("province"); // province or city
 
   // State untuk data real
   const [stats, setStats] = useState({
@@ -38,16 +52,129 @@ const AdminDashboard = () => {
   const [userData, setUserData] = useState([]);
   const [editLogs, setEditLogs] = useState([]);
   const [loginLogs, setLoginLogs] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [analyticsData, setAnalyticsData] = useState({
     ikmByKomoditi: {},
     regionalDistribution: {},
+    regionalDistributionByCity: {},
     userActivityTrend: [],
   });
+
+  // State untuk Survey IKM
+  const [ikmSurveyList, setIkmSurveyList] = useState([]);
+  const [surveySearch, setSurveySearch] = useState("");
 
   const handleLogout = () => {
     adminLogout();
     navigate("/admin");
   };
+
+  // Function to calculate date range based on period
+  const getDateRange = (period) => {
+    const now = new Date();
+    const startDate = new Date();
+
+    switch (period) {
+      case "1m":
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case "3m":
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case "6m":
+        startDate.setMonth(now.getMonth() - 6);
+        break;
+      case "1y":
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setMonth(now.getMonth() - 1);
+    }
+    return { startDate, endDate: now };
+  };
+
+  // Function to convert Firestore timestamp to Date
+  const toDate = (timestamp) => {
+    if (!timestamp) return null;
+    if (
+      typeof timestamp === "object" &&
+      timestamp.toDate &&
+      typeof timestamp.toDate === "function"
+    ) {
+      return timestamp.toDate();
+    }
+    if (timestamp instanceof Date) {
+      return timestamp;
+    }
+    if (typeof timestamp === "string") {
+      return new Date(timestamp);
+    }
+    return null;
+  };
+
+  // Compute activity trend data based on selected period
+  const activityTrendData = useMemo(() => {
+    const { startDate, endDate } = getDateRange(activityPeriod);
+
+    // Create map for weekly data (more readable than daily)
+    const weeklyData = {};
+
+    // Initialize weeks
+    let currentDate = new Date(startDate);
+    while (currentDate < endDate) {
+      const weekStart = new Date(currentDate);
+      const dayOfWeek = weekStart.getDay();
+      weekStart.setDate(weekStart.getDate() - dayOfWeek); // Start from Sunday
+
+      const weekKey = weekStart.toISOString().split("T")[0];
+      if (!weeklyData[weekKey]) {
+        weeklyData[weekKey] = {
+          week: `${weekStart.getDate()} ${weekStart.toLocaleString("id-ID", { month: "short" })}`,
+          logins: 0,
+          registrations: 0,
+        };
+      }
+
+      currentDate.setDate(currentDate.getDate() + 7);
+    }
+
+    // Process login logs - use loginAt Date object directly
+    loginLogs.forEach((log) => {
+      const logDate = log.loginAt; // Already a Date object
+      if (logDate && logDate >= startDate && logDate <= endDate) {
+        const weekStart = new Date(logDate);
+        const dayOfWeek = weekStart.getDay();
+        weekStart.setDate(weekStart.getDate() - dayOfWeek);
+        const weekKey = weekStart.toISOString().split("T")[0];
+
+        if (weeklyData[weekKey]) {
+          weeklyData[weekKey].logins += 1;
+        }
+      }
+    });
+
+    // Process user createdAt for registrations
+    allUsers.forEach((user) => {
+      const createdDate = toDate(user.createdAt);
+      if (createdDate && createdDate >= startDate && createdDate <= endDate) {
+        const weekStart = new Date(createdDate);
+        const dayOfWeek = weekStart.getDay();
+        weekStart.setDate(weekStart.getDate() - dayOfWeek);
+        const weekKey = weekStart.toISOString().split("T")[0];
+
+        if (weeklyData[weekKey]) {
+          weeklyData[weekKey].registrations += 1;
+        }
+      }
+    });
+
+    // Convert to array and sort
+    return Object.values(weeklyData).sort((a, b) => {
+      const aDate = new Date(a.week);
+      const bDate = new Date(b.week);
+      return aDate - bDate;
+    });
+  }, [activityPeriod, loginLogs, allUsers]);
 
   // Helper function to safely render Firestore timestamp objects
   const renderSafeValue = (value) => {
@@ -92,6 +219,7 @@ const AdminDashboard = () => {
         // Store data
         setUserData(allUsers.filter((u) => u.role === "user"));
         setIkmData(allUsers.filter((u) => u.role === "ikm"));
+        setAllUsers(allUsers);
 
         // Calculate partnerships (dari field kemitraanAkademik, kemitraan, activePartnerships)
         let partnershipCount = 0;
@@ -162,32 +290,41 @@ const AdminDashboard = () => {
 
         // Fetch login logs if collection exists
         try {
+          // Fetch ALL login logs without limit (or with large limit) for trend calculation
           const loginLogsQuery = query(
             collection(db, "login_logs"),
             orderBy("loginAt", "desc"),
-            limit(10),
           );
           const loginLogsSnapshot = await getDocs(loginLogsQuery);
           const fetchedLoginLogs = loginLogsSnapshot.docs.map((doc) => {
             const data = doc.data();
-            // Convert Firestore timestamp to readable format
-            let loginAtDisplay = data.loginAt;
+            // Keep loginAt as Date object for trend calculation in useMemo
+            let loginAtDate = null;
             if (
               data.loginAt &&
               typeof data.loginAt === "object" &&
-              data.loginAt.toDate
+              data.loginAt.toDate &&
+              typeof data.loginAt.toDate === "function"
             ) {
-              loginAtDisplay = data.loginAt.toDate().toLocaleString("id-ID");
+              loginAtDate = data.loginAt.toDate();
             } else if (data.loginAt instanceof Date) {
-              loginAtDisplay = data.loginAt.toLocaleString("id-ID");
+              loginAtDate = data.loginAt;
             } else if (typeof data.loginAt === "string") {
-              loginAtDisplay = data.loginAt;
+              loginAtDate = new Date(data.loginAt);
             }
+
+            // Create display string for UI
+            let loginAtDisplay = "N/A";
+            if (loginAtDate) {
+              loginAtDisplay = loginAtDate.toLocaleString("id-ID");
+            }
+
             return {
               id: doc.id,
               email: data.email || "N/A",
               role: data.role || "N/A",
-              loginAt: loginAtDisplay,
+              loginAt: loginAtDate, // Keep as Date object
+              loginAtDisplay: loginAtDisplay, // For UI display
             };
           });
           setLoginLogs(fetchedLoginLogs);
@@ -206,8 +343,24 @@ const AdminDashboard = () => {
           totalPartnerships: partnershipCount,
         });
 
+        // Fetch IKM Survey Data
+        const ikmUsers = allUsers.filter((u) => u.role === "ikm");
+        const surveyCompletedIkm = ikmUsers
+          .filter((ikm) => ikm.survey)
+          .map((ikm) => ({
+            id: ikm.id,
+            uid: ikm.id,
+            businessName: ikm.businessName || "N/A",
+            fullName: ikm.fullName || "N/A",
+            email: ikm.email || "N/A",
+            phone: ikm.phone || "N/A",
+            survey: ikm.survey || {},
+            surveySubmittedAt: ikm.surveySubmittedAt || "N/A",
+          }));
+        setIkmSurveyList(surveyCompletedIkm);
+
         // Calculate analytics
-        calculateAnalytics(allUsers.filter((u) => u.role === "ikm"));
+        calculateAnalytics(ikmUsers);
 
         setLoading(false);
       } catch (error) {
@@ -221,33 +374,130 @@ const AdminDashboard = () => {
 
   // Function untuk calculate analytics
   const calculateAnalytics = (ikmUsers) => {
-    // IKM by Commodity
+    // IKM by KBLI (5 digit code)
+    const kbliMap = {};
+    ikmUsers.forEach((ikm) => {
+      const kbliCode = ikm.kbli || "0000"; // Default jika tidak ada
+      kbliMap[kbliCode] = (kbliMap[kbliCode] || 0) + 1;
+    });
+
+    // Sort by count (descending) and get top 10
+    const sortedKbli = Object.entries(kbliMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    // Create top 10 KBLI object
     const komoditi = {};
-    ikmUsers.forEach((ikm) => {
-      const commodity = ikm.commodity || "Lainnya";
-      komoditi[commodity] = (komoditi[commodity] || 0) + 1;
+    let komoditiOtherCount = 0;
+
+    sortedKbli.forEach(([kbli, count]) => {
+      komoditi[kbli] = count;
     });
 
-    // Regional distribution
-    const regions = {};
-    ikmUsers.forEach((ikm) => {
-      const city = ikm.officeCity || ikm.factoryCity || "Lainnya";
-      regions[city] = (regions[city] || 0) + 1;
+    // Count the rest as "Lainnya" (only if more than 10 unique KBLI)
+    const totalUniqueKbli = Object.keys(kbliMap).length;
+    Object.entries(kbliMap).forEach(([kbli, count]) => {
+      if (!Object.prototype.hasOwnProperty.call(komoditi, kbli)) {
+        komoditiOtherCount += count;
+      }
     });
 
-    // User activity trend (mock data karena tidak ada real-time logs)
-    const trend = [
-      { date: "01 Mar", logins: 45, registrations: 12 },
-      { date: "08 Mar", logins: 67, registrations: 18 },
-      { date: "15 Mar", logins: 52, registrations: 14 },
-      { date: "22 Mar", logins: 89, registrations: 25 },
-    ];
+    if (komoditiOtherCount > 0 && totalUniqueKbli > 10) {
+      komoditi["Lainnya"] = komoditiOtherCount;
+    }
+
+    // Regional distribution by PROVINCE
+    const provinceMap = {};
+    let provinceUnknownCount = 0;
+
+    ikmUsers.forEach((ikm) => {
+      const province = ikm.factoryProvince || ikm.officeProvince;
+      if (province && province.trim()) {
+        provinceMap[province] = (provinceMap[province] || 0) + 1;
+      } else {
+        provinceUnknownCount += 1;
+      }
+    });
+
+    // Sort by count (descending) and get top 10
+    const sortedProvince = Object.entries(provinceMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    // Create top 10 province object
+    const provinces = {};
+    sortedProvince.forEach(([province, count]) => {
+      provinces[province] = count;
+    });
+
+    // Count the rest as "Lainnya" (only if more than 10 unique provinces)
+    let provinceOtherCount = provinceUnknownCount;
+    const totalUniqueProvinces = Object.keys(provinceMap).length;
+    Object.entries(provinceMap).forEach(([province, count]) => {
+      if (!Object.prototype.hasOwnProperty.call(provinces, province)) {
+        provinceOtherCount += count;
+      }
+    });
+
+    if (provinceOtherCount > 0 && totalUniqueProvinces > 10) {
+      provinces["Lainnya"] = provinceOtherCount;
+    }
+
+    // Regional distribution by CITY
+    const cityMap = {};
+    let cityUnknownCount = 0;
+
+    ikmUsers.forEach((ikm) => {
+      const city = ikm.factoryCity || ikm.officeCity;
+      if (city && city.trim()) {
+        cityMap[city] = (cityMap[city] || 0) + 1;
+      } else {
+        cityUnknownCount += 1;
+      }
+    });
+
+    // Sort by count (descending) and get top 10
+    const sortedCity = Object.entries(cityMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    // Create top 10 city object
+    const cities = {};
+    sortedCity.forEach(([city, count]) => {
+      cities[city] = count;
+    });
+
+    // Count the rest as "Lainnya" (only if more than 10 unique cities)
+    let cityOtherCount = cityUnknownCount;
+    const totalUniqueCities = Object.keys(cityMap).length;
+    Object.entries(cityMap).forEach(([city, count]) => {
+      if (!Object.prototype.hasOwnProperty.call(cities, city)) {
+        cityOtherCount += count;
+      }
+    });
+
+    if (cityOtherCount > 0 && totalUniqueCities > 10) {
+      cities["Lainnya"] = cityOtherCount;
+    }
 
     setAnalyticsData({
       ikmByKomoditi: komoditi,
-      regionalDistribution: regions,
-      userActivityTrend: trend,
+      regionalDistribution: provinces,
+      regionalDistributionByCity: cities,
+      userActivityTrend: [],
     });
+  };
+
+  // Filter IKM surveys by search term
+  const filteredSurveyList = ikmSurveyList.filter(
+    (survey) =>
+      survey.businessName.toLowerCase().includes(surveySearch.toLowerCase()) ||
+      survey.fullName.toLowerCase().includes(surveySearch.toLowerCase()),
+  );
+
+  // Handle opening survey detail view
+  const handleOpenSurvey = (survey) => {
+    navigate(`/admin/survey/${survey.uid}`);
   };
 
   // Handle edit
@@ -444,25 +694,30 @@ const AdminDashboard = () => {
           {/* Tab Navigation */}
           <div className="flex flex-wrap gap-2 mb-8 bg-white rounded-xl p-2 shadow-md">
             {[
-              {
-                id: "overview",
-                label: "Overview",
-                icon: <BarChart3 className="w-4 h-4" />,
-              },
+              // {
+              //   id: "overview",
+              //   label: "Overview",
+              //   icon: <BarChart3 className="w-4 h-4" />,
+              // },
               {
                 id: "management",
-                label: "Data Management",
+                label: "Edit Data",
                 icon: <Database className="w-4 h-4" />,
               },
               { id: "logs", label: "Logs", icon: <Eye className="w-4 h-4" /> },
               {
                 id: "analytics",
-                label: "Analytics",
+                label: "Data",
                 icon: <BarChart3 className="w-4 h-4" />,
               },
               {
+                id: "survey",
+                label: "Survey IKM",
+                icon: <Edit2 className="w-4 h-4" />,
+              },
+              {
                 id: "export",
-                label: "Export",
+                label: "Ekspor Data",
                 icon: <Download className="w-4 h-4" />,
               },
             ].map((tab) => (
@@ -597,7 +852,7 @@ const AdminDashboard = () => {
                       onClick={() => setActiveTab("export")}
                       className="w-full px-4 py-3 text-left text-sm font-semibold text-white bg-linear-to-r from-purple-600 to-purple-500 rounded-xl hover:shadow-lg transition-all"
                     >
-                      Export Data
+                      Ekspor Data
                     </button>
                   </div>
                 </div>
@@ -612,7 +867,7 @@ const AdminDashboard = () => {
                 className="text-2xl font-bold text-gray-800 mb-6"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
-                Data Management
+                Edit Data
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
@@ -632,7 +887,7 @@ const AdminDashboard = () => {
                     type: "user",
                   },
                   {
-                    title: "Edit Data Academician",
+                    title: "Edit Data Akademisi",
                     description: "Edit profil dan penelitian akademisi",
                     icon: <BarChart3 className="w-8 h-8" />,
                     color: "from-yellow-600 to-yellow-500",
@@ -817,7 +1072,7 @@ const AdminDashboard = () => {
                           className="border-b border-gray-100 hover:bg-gray-50"
                         >
                           <td className="px-4 py-3 text-sm text-gray-600">
-                            {renderSafeValue(log.loginAt)}
+                            {log.loginAtDisplay}
                           </td>
                           <td className="px-4 py-3 text-sm font-semibold text-gray-800">
                             {renderSafeValue(log.email)}
@@ -861,30 +1116,30 @@ const AdminDashboard = () => {
                 className="text-2xl font-bold text-gray-800"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
-                Data Analytics
+                Analisis Data
               </h2>
 
               {/* Key Metrics */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   {
-                    title: "Total IKM",
-                    value: analyticsData.totalIKM,
+                    title: "Jumlah IKM",
+                    value: stats.totalIKM,
                     color: "from-green-600 to-green-500",
                   },
                   {
-                    title: "Total User",
-                    value: analyticsData.totalUser,
+                    title: "Jumlah User",
+                    value: stats.totalUsers,
                     color: "from-blue-600 to-blue-500",
                   },
                   {
-                    title: "Total Academician",
-                    value: analyticsData.totalAcademician,
+                    title: "Jumlah Akademisi",
+                    value: stats.totalAcademician,
                     color: "from-yellow-600 to-yellow-500",
                   },
                   {
-                    title: "Total Partnership",
-                    value: analyticsData.totalPartnerships,
+                    title: "Jumlah Kemitraan",
+                    value: stats.totalPartnerships,
                     color: "from-purple-600 to-purple-500",
                   },
                 ].map((metric, idx) => (
@@ -908,22 +1163,22 @@ const AdminDashboard = () => {
                 ))}
               </div>
 
-              {/* IKM by Komoditi */}
+              {/* IKM by KBLI */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
                 <h3
                   className="text-xl font-bold text-gray-800 mb-6"
                   style={{ fontFamily: "Poppins, sans-serif" }}
                 >
-                  IKM per Kelompok Komoditi
+                  IKM per KBLI
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {Object.entries(analyticsData.ikmByKomoditi).map(
-                    ([komoditi, count]) => (
-                      <div key={komoditi} className="flex items-center gap-4">
+                    ([kbli, count]) => (
+                      <div key={kbli} className="flex items-center gap-4">
                         <div className="flex-1">
                           <div className="flex justify-between mb-2">
                             <span className="font-semibold text-gray-800">
-                              {komoditi}
+                              {kbli === "Lainnya" ? "Lainnya" : `KBLI ${kbli}`}
                             </span>
                             <span className="font-bold text-gray-900">
                               {count}
@@ -944,85 +1199,136 @@ const AdminDashboard = () => {
 
               {/* Regional Distribution */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h3
-                  className="text-xl font-bold text-gray-800 mb-6"
-                  style={{ fontFamily: "Poppins, sans-serif" }}
-                >
-                  Sebaran Wilayah IKM
-                </h3>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                  <h3
+                    className="text-xl font-bold text-gray-800"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Sebaran Wilayah IKM
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setRegionalFilter("province")}
+                      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                        regionalFilter === "province"
+                          ? "bg-linear-to-r from-blue-600 to-blue-500 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Provinsi
+                    </button>
+                    <button
+                      onClick={() => setRegionalFilter("city")}
+                      className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                        regionalFilter === "city"
+                          ? "bg-linear-to-r from-blue-600 to-blue-500 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                      style={{ fontFamily: "Montserrat, sans-serif" }}
+                    >
+                      Kota/Kabupaten
+                    </button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {Object.entries(analyticsData.regionalDistribution).map(
-                    ([region, count]) => (
-                      <div key={region} className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex justify-between mb-2">
-                            <span className="font-semibold text-gray-800">
-                              {region}
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              {count}
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div
-                              className="bg-linear-to-r from-blue-600 to-blue-500 h-3 rounded-full"
-                              style={{ width: `${(count / 300) * 100}%` }}
-                            ></div>
-                          </div>
+                  {Object.entries(
+                    regionalFilter === "province"
+                      ? analyticsData.regionalDistribution
+                      : analyticsData.regionalDistributionByCity,
+                  ).map(([region, count]) => (
+                    <div key={region} className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-2">
+                          <span className="font-semibold text-gray-800">
+                            {region}
+                          </span>
+                          <span className="font-bold text-gray-900">
+                            {count}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                          <div
+                            className="bg-linear-to-r from-blue-600 to-blue-500 h-3 rounded-full"
+                            style={{ width: `${(count / 300) * 100}%` }}
+                          ></div>
                         </div>
                       </div>
-                    ),
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Activity Trend */}
               <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h3
-                  className="text-xl font-bold text-gray-800 mb-6"
-                  style={{ fontFamily: "Poppins, sans-serif" }}
-                >
-                  Tren Aktivitas Pengguna
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200">
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                          Tanggal
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                          Total Login
-                        </th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
-                          Registrasi Baru
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analyticsData.userActivityTrend.map((trend, idx) => (
-                        <tr
-                          key={idx}
-                          className="border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          <td className="px-4 py-3 text-sm font-semibold text-gray-800">
-                            {trend.date}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full">
-                              {trend.logins}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
-                              {trend.registrations}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                  <h3
+                    className="text-xl font-bold text-gray-800"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Tren Aktivitas Pengguna
+                  </h3>
+                  <div className="flex gap-2 flex-wrap">
+                    {[
+                      { label: "1 Bulan", value: "1m" },
+                      { label: "3 Bulan", value: "3m" },
+                      { label: "6 Bulan", value: "6m" },
+                      { label: "1 Tahun", value: "1y" },
+                    ].map((period) => (
+                      <button
+                        key={period.value}
+                        onClick={() => setActivityPeriod(period.value)}
+                        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+                          activityPeriod === period.value
+                            ? "bg-linear-to-r from-green-600 to-green-500 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                        style={{ fontFamily: "Montserrat, sans-serif" }}
+                      >
+                        {period.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {activityTrendData && activityTrendData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={activityTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="week"
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                      />
+                      <YAxis />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#fff",
+                          border: "1px solid #ccc",
+                          borderRadius: "8px",
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="logins"
+                        fill="#10b981"
+                        name="Login"
+                        radius={[8, 8, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="registrations"
+                        fill="#3b82f6"
+                        name="Registrasi Baru"
+                        radius={[8, 8, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-gray-500">
+                    <p>Tidak ada data aktivitas untuk periode ini</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1034,7 +1340,7 @@ const AdminDashboard = () => {
                 className="text-2xl font-bold text-gray-800 mb-6"
                 style={{ fontFamily: "Poppins, sans-serif" }}
               >
-                Export Data
+                Ekspor Data
               </h2>
               <p
                 className="text-gray-600 mb-8"
@@ -1047,22 +1353,22 @@ const AdminDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[
                   {
-                    title: "Export Data IKM",
+                    title: "Ekspor Data IKM",
                     description: "Download semua data IKM terdaftar",
                     icon: <Download className="w-8 h-8" />,
                     color: "from-green-600 to-green-500",
                     action: exportToExcel,
                   },
                   {
-                    title: "Export Data User",
+                    title: "Ekspor Data User",
                     description: "Download semua data pengguna industri",
                     icon: <Download className="w-8 h-8" />,
                     color: "from-blue-600 to-blue-500",
                     action: exportUserData,
                   },
                   {
-                    title: "Export Analytics",
-                    description: "Download rangkuman analisis data",
+                    title: "Ekspor Data Akademisi",
+                    description: "Download semua data akademisi",
                     icon: <Download className="w-8 h-8" />,
                     color: "from-yellow-600 to-yellow-500",
                     action: exportAnalytics,
@@ -1094,7 +1400,7 @@ const AdminDashboard = () => {
                       className={`w-full px-4 py-2 text-white rounded-lg font-semibold hover:shadow-lg transition-all bg-linear-to-r ${item.color}`}
                       style={{ fontFamily: "Montserrat, sans-serif" }}
                     >
-                      Export
+                      Ekspor
                     </button>
                   </div>
                 ))}
@@ -1111,6 +1417,100 @@ const AdminDashboard = () => {
                   analisis, pelaporan, dan keperluan administrasi. Semua file
                   export akan diunduh dalam format .xlsx (Excel).
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Survey IKM Tab */}
+          {activeTab === "survey" && (
+            <div className="space-y-6">
+              <h2
+                className="text-2xl font-bold text-gray-800"
+                style={{ fontFamily: "Poppins, sans-serif" }}
+              >
+                Data Survey IKM
+              </h2>
+
+              {/* Search Box */}
+              <div className="bg-white rounded-2xl shadow-lg p-6">
+                <input
+                  type="text"
+                  placeholder="Cari nama IKM atau nama kontak..."
+                  value={surveySearch}
+                  onChange={(e) => setSurveySearch(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{ fontFamily: "Open Sans, sans-serif" }}
+                />
+              </div>
+
+              {/* Survey List */}
+              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+                {filteredSurveyList.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b-2 border-gray-200 bg-gray-50">
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                            Nama IKM
+                          </th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                            Nama Kontak
+                          </th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                            Email
+                          </th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                            Status
+                          </th>
+                          <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">
+                            Aksi
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSurveyList.map((survey) => (
+                          <tr
+                            key={survey.uid}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="px-6 py-4 text-sm font-semibold text-gray-800">
+                              {survey.businessName}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {survey.fullName}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {survey.email}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <span className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                Sudah Diisi
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <button
+                                onClick={() => handleOpenSurvey(survey)}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-linear-to-r from-blue-600 to-blue-500 rounded-lg hover:shadow-lg transition-all"
+                                style={{ fontFamily: "Montserrat, sans-serif" }}
+                              >
+                                Lihat Detail
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-gray-500">
+                    {ikmSurveyList.length === 0 ? (
+                      <p>Belum ada IKM yang mengisi survey</p>
+                    ) : (
+                      <p>Tidak ada hasil pencarian</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

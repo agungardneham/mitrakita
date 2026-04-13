@@ -15,6 +15,7 @@ import AcademicianDashboard from "./pages/AcademicianDashboard";
 import UserDashboard from "./pages/UserDashboard";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminSurveyDetailPage from "./pages/AdminSurveyDetailPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import UserDirectoryPage from "./pages/UserDirectoryPage";
 import { User } from "lucide-react";
@@ -94,6 +95,14 @@ function App() {
             element={
               <ProtectedRoute requireAdmin={true}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/survey/:ikmId"
+            element={
+              <ProtectedRoute requireAdmin={true}>
+                <AdminSurveyDetailPage />
               </ProtectedRoute>
             }
           />

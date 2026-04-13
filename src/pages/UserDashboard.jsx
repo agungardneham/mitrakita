@@ -109,7 +109,7 @@ const UserDashboard = () => {
 
   // Pending Partnership Requests State (belum diverifikasi IKM)
   const [pendingPartnershipRequests, setPendingPartnershipRequests] = useState(
-    []
+    [],
   );
   const [loadingPendingRequests, setLoadingPendingRequests] = useState(false);
 
@@ -174,9 +174,8 @@ const UserDashboard = () => {
 
     (async () => {
       try {
-        const { getFirestore, doc, onSnapshot } = await import(
-          "firebase/firestore"
-        );
+        const { getFirestore, doc, onSnapshot } =
+          await import("firebase/firestore");
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
 
@@ -223,7 +222,7 @@ const UserDashboard = () => {
             console.error("Realtime partnership listener error:", error);
             setLoadingPendingRequests(false);
             setLoadingVerifiedPartnerships(false);
-          }
+          },
         );
       } catch (err) {
         console.error("Error setting up partnership listener:", err);
@@ -260,7 +259,7 @@ const UserDashboard = () => {
         const db = getFirestore();
         const qref = firestoreQuery(
           collection(db, "users"),
-          where("role", "==", "ikm")
+          where("role", "==", "ikm"),
         );
         const snap = await getDocs(qref);
         const results = [];
@@ -338,7 +337,7 @@ const UserDashboard = () => {
             if (removeError)
               console.warn(
                 "Failed to remove previous profile photo:",
-                removeError
+                removeError,
               );
           }
         } catch (remErr) {
@@ -418,9 +417,8 @@ const UserDashboard = () => {
 
     if (!user) return;
     try {
-      const { getFirestore, doc, updateDoc, arrayUnion } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, updateDoc, arrayUnion } =
+        await import("firebase/firestore");
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
       // write to camelCase field only
@@ -430,9 +428,8 @@ const UserDashboard = () => {
     } catch (err) {
       console.error("Error saving partnership history (primary):", err);
       try {
-        const { getFirestore, doc, getDoc, setDoc } = await import(
-          "firebase/firestore"
-        );
+        const { getFirestore, doc, getDoc, setDoc } =
+          await import("firebase/firestore");
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
         const snap = await getDoc(userDocRef);
@@ -444,7 +441,7 @@ const UserDashboard = () => {
         await setDoc(
           userDocRef,
           { partnershipHistory: merged },
-          { merge: true }
+          { merge: true },
         );
       } catch (err2) {
         console.error("Error saving partnership history (fallback):", err2);
@@ -463,7 +460,7 @@ const UserDashboard = () => {
     if (!editingHistoryId || !editingHistoryData) return;
 
     setPartnershipHistory((prev) =>
-      prev.map((h) => (h.id === editingHistoryId ? editingHistoryData : h))
+      prev.map((h) => (h.id === editingHistoryId ? editingHistoryData : h)),
     );
 
     if (!user) {
@@ -473,9 +470,8 @@ const UserDashboard = () => {
     }
 
     try {
-      const { getFirestore, doc, getDoc, setDoc } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, getDoc, setDoc } =
+        await import("firebase/firestore");
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
       const snap = await getDoc(userDocRef);
@@ -483,12 +479,12 @@ const UserDashboard = () => {
         const updated = snap
           .data()
           .partnershipHistory.map((h) =>
-            h.id === editingHistoryId ? editingHistoryData : h
+            h.id === editingHistoryId ? editingHistoryData : h,
           );
         await setDoc(
           userDocRef,
           { partnershipHistory: updated },
-          { merge: true }
+          { merge: true },
         );
       }
     } catch (err) {
@@ -506,9 +502,8 @@ const UserDashboard = () => {
 
     if (!user) return;
     try {
-      const { getFirestore, doc, getDoc, setDoc } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, getDoc, setDoc } =
+        await import("firebase/firestore");
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
       const snap = await getDoc(userDocRef);
@@ -532,7 +527,7 @@ const UserDashboard = () => {
             partnershipHistory: historyUpdated,
             activePartnerships: activeUpdated,
           },
-          { merge: true }
+          { merge: true },
         );
       }
     } catch (err) {
@@ -545,15 +540,19 @@ const UserDashboard = () => {
     const loadUserData = async () => {
       if (!user) return;
       try {
-        const { getFirestore, doc, getDoc } = await import(
-          "firebase/firestore"
-        );
+        const { getFirestore, doc, getDoc } =
+          await import("firebase/firestore");
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userDocRef);
         if (userSnap.exists()) {
           const data = userSnap.data();
-          setProfileData((prev) => ({ ...prev, ...data }));
+          // Map 'phone' field from Firebase to 'phoneNumber' in state
+          const mapData = { ...data };
+          if (data.phone && !data.phoneNumber) {
+            mapData.phoneNumber = data.phone;
+          }
+          setProfileData((prev) => ({ ...prev, ...mapData }));
           // load verifiedPartnerships from Firestore
           const loadedActive = Array.isArray(data.verifiedPartnerships)
             ? data.verifiedPartnerships
@@ -587,7 +586,15 @@ const UserDashboard = () => {
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
       // allow passing overrideData (e.g., latest profileData), else use state
-      await setDoc(userDocRef, overrideData || profileData, { merge: true });
+      const dataToSave = overrideData || profileData;
+      // Map 'phoneNumber' from state back to 'phone' for Firebase
+      const mappedData = { ...dataToSave };
+      if (mappedData.phoneNumber) {
+        mappedData.phone = mappedData.phoneNumber;
+        // Optionally delete phoneNumber if you want to keep only 'phone' in Firebase
+        // delete mappedData.phoneNumber;
+      }
+      await setDoc(userDocRef, mappedData, { merge: true });
     } catch (err) {
       console.error("Error saving profile to Firestore:", err);
       throw err;
@@ -629,9 +636,8 @@ const UserDashboard = () => {
 
     if (!user) return;
     try {
-      const { getFirestore, doc, updateDoc, arrayUnion } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, updateDoc, arrayUnion } =
+        await import("firebase/firestore");
       const db = getFirestore();
       const userDocRef = doc(db, "users", user.uid);
       // update camelCase fields only
@@ -643,9 +649,8 @@ const UserDashboard = () => {
       console.error("Error saving partnership to Firestore (primary):", err);
       // fallback: merge and set both keys
       try {
-        const { getFirestore, doc, getDoc, setDoc } = await import(
-          "firebase/firestore"
-        );
+        const { getFirestore, doc, getDoc, setDoc } =
+          await import("firebase/firestore");
         const db = getFirestore();
         const userDocRef = doc(db, "users", user.uid);
         const snap = await getDoc(userDocRef);
@@ -666,12 +671,12 @@ const UserDashboard = () => {
             activePartnerships: mergedActive,
             partnershipHistory: mergedHistory,
           },
-          { merge: true }
+          { merge: true },
         );
       } catch (err2) {
         console.error(
           "Error saving partnership to Firestore (fallback):",
-          err2
+          err2,
         );
       }
     }
@@ -713,8 +718,8 @@ const UserDashboard = () => {
       // Optimistic update
       setNewPartnershipRequests((prev) =>
         prev.filter(
-          (_, i) => !(i === index && prev[i].initiatedBy?.uid !== user.uid)
-        )
+          (_, i) => !(i === index && prev[i].initiatedBy?.uid !== user.uid),
+        ),
       );
       setVerifiedPartnerships((prev) => [...prev, verifiedPartnershipObj]);
 
@@ -730,9 +735,8 @@ const UserDashboard = () => {
     if (!user) return;
 
     try {
-      const { getFirestore, doc, updateDoc, arrayRemove } = await import(
-        "firebase/firestore"
-      );
+      const { getFirestore, doc, updateDoc, arrayRemove } =
+        await import("firebase/firestore");
       const db = getFirestore();
 
       // Remove from user's newPartnershipRequests
@@ -750,8 +754,8 @@ const UserDashboard = () => {
       // Optimistic update
       setNewPartnershipRequests((prev) =>
         prev.filter(
-          (_, i) => !(i === index && prev[i].initiatedBy?.uid !== user.uid)
-        )
+          (_, i) => !(i === index && prev[i].initiatedBy?.uid !== user.uid),
+        ),
       );
 
       alert("Permintaan kemitraan ditolak");
@@ -1004,7 +1008,7 @@ const UserDashboard = () => {
 
               {/* Pending Partnership Requests */}
               {dedupedNewPartnershipRequests.filter(
-                (req) => req.initiatedBy && req.initiatedBy.uid !== user.uid
+                (req) => req.initiatedBy && req.initiatedBy.uid !== user.uid,
               ).length > 0 && (
                 <div className="mb-8">
                   <h2
@@ -1015,7 +1019,7 @@ const UserDashboard = () => {
                     {
                       dedupedNewPartnershipRequests.filter(
                         (req) =>
-                          req.initiatedBy && req.initiatedBy.uid !== user.uid
+                          req.initiatedBy && req.initiatedBy.uid !== user.uid,
                       ).length
                     }
                     )
@@ -1027,13 +1031,13 @@ const UserDashboard = () => {
                     </div>
                   ) : dedupedNewPartnershipRequests.filter(
                       (req) =>
-                        req.initiatedBy && req.initiatedBy.uid !== user.uid
+                        req.initiatedBy && req.initiatedBy.uid !== user.uid,
                     ).length > 0 ? (
                     <div className="space-y-4">
                       {dedupedNewPartnershipRequests
                         .filter(
                           (req) =>
-                            req.initiatedBy && req.initiatedBy.uid !== user.uid
+                            req.initiatedBy && req.initiatedBy.uid !== user.uid,
                         )
                         .map((request, index) => (
                           <div
@@ -1062,7 +1066,7 @@ const UserDashboard = () => {
                                 <p className="text-sm text-gray-600 mb-2">
                                   <strong>Tanggal Mulai:</strong>{" "}
                                   {new Date(
-                                    request.startDate
+                                    request.startDate,
                                   ).toLocaleDateString("id-ID")}
                                 </p>
                                 {request.duration && (
@@ -1073,7 +1077,7 @@ const UserDashboard = () => {
                                 <p className="text-xs text-gray-500 mt-3">
                                   Diajukan:{" "}
                                   {new Date(
-                                    request.createdAt
+                                    request.createdAt,
                                   ).toLocaleDateString("id-ID", {
                                     year: "numeric",
                                     month: "short",
@@ -1090,7 +1094,7 @@ const UserDashboard = () => {
                                 onClick={() =>
                                   handleAcceptIKMPartnershipRequest(
                                     request,
-                                    index
+                                    index,
                                   )
                                 }
                                 className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
@@ -1101,7 +1105,7 @@ const UserDashboard = () => {
                                 onClick={() =>
                                   handleRejectIKMPartnershipRequest(
                                     request,
-                                    index
+                                    index,
                                   )
                                 }
                                 className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition"
@@ -1628,7 +1632,7 @@ const UserDashboard = () => {
                                   Mulai:{" "}
                                   {h.startDate
                                     ? new Date(h.startDate).toLocaleDateString(
-                                        "id-ID"
+                                        "id-ID",
                                       )
                                     : "-"}{" "}
                                   • Durasi: {h.duration}
@@ -1701,7 +1705,7 @@ const UserDashboard = () => {
                         } catch (e) {
                           console.error("Failed to save profile:", e);
                           alert(
-                            "Gagal menyimpan profil. Silakan coba lagi atau hubungi admin."
+                            "Gagal menyimpan profil. Silakan coba lagi atau hubungi admin.",
                           );
                         }
                       }}
@@ -1871,7 +1875,7 @@ const UserDashboard = () => {
                   {
                     dedupedNewPartnershipRequests.filter(
                       (req) =>
-                        req.initiatedBy && req.initiatedBy.uid !== user.uid
+                        req.initiatedBy && req.initiatedBy.uid !== user.uid,
                     ).length
                   }
                   )
@@ -1882,13 +1886,14 @@ const UserDashboard = () => {
                     <p className="text-gray-500">Memuat data...</p>
                   </div>
                 ) : dedupedNewPartnershipRequests.filter(
-                    (req) => req.initiatedBy && req.initiatedBy.uid !== user.uid
+                    (req) =>
+                      req.initiatedBy && req.initiatedBy.uid !== user.uid,
                   ).length > 0 ? (
                   <div className="space-y-4">
                     {dedupedNewPartnershipRequests
                       .filter(
                         (req) =>
-                          req.initiatedBy && req.initiatedBy.uid !== user.uid
+                          req.initiatedBy && req.initiatedBy.uid !== user.uid,
                       )
                       .map((request, index) => (
                         <div
@@ -1915,7 +1920,7 @@ const UserDashboard = () => {
                               <p className="text-sm text-gray-600 mb-2">
                                 <strong>Tanggal Mulai:</strong>{" "}
                                 {new Date(request.startDate).toLocaleDateString(
-                                  "id-ID"
+                                  "id-ID",
                                 )}
                               </p>
                               {request.duration && (
@@ -1933,7 +1938,7 @@ const UserDashboard = () => {
                                     day: "numeric",
                                     hour: "2-digit",
                                     minute: "2-digit",
-                                  }
+                                  },
                                 )}
                               </p>
                             </div>
@@ -1944,7 +1949,7 @@ const UserDashboard = () => {
                               onClick={() =>
                                 handleAcceptIKMPartnershipRequest(
                                   request,
-                                  index
+                                  index,
                                 )
                               }
                               className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-semibold hover:shadow-lg transition disabled:opacity-50"
@@ -1955,7 +1960,7 @@ const UserDashboard = () => {
                               onClick={() =>
                                 handleRejectIKMPartnershipRequest(
                                   request,
-                                  index
+                                  index,
                                 )
                               }
                               className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition"
@@ -2019,7 +2024,7 @@ const UserDashboard = () => {
                             <p className="text-sm text-gray-600 mb-2">
                               <strong>Tanggal Mulai:</strong>{" "}
                               {new Date(request.startDate).toLocaleDateString(
-                                "id-ID"
+                                "id-ID",
                               )}
                             </p>
                             {request.duration && (
@@ -2037,7 +2042,7 @@ const UserDashboard = () => {
                                   day: "numeric",
                                   hour: "2-digit",
                                   minute: "2-digit",
-                                }
+                                },
                               )}
                             </p>
                           </div>
@@ -2114,7 +2119,7 @@ const UserDashboard = () => {
                             </p>
                             <p className="font-semibold text-gray-800">
                               {new Date(
-                                partnership.startDate
+                                partnership.startDate,
                               ).toLocaleDateString("id-ID")}
                             </p>
                           </div>
@@ -2134,7 +2139,7 @@ const UserDashboard = () => {
                           Diverifikasi:{" "}
                           {partnership.createdAt
                             ? new Date(
-                                partnership.createdAt
+                                partnership.createdAt,
                               ).toLocaleDateString("id-ID", {
                                 year: "numeric",
                                 month: "short",
@@ -2778,27 +2783,27 @@ const UserDashboard = () => {
                           <div className="flex flex-wrap gap-2">
                             {(() => {
                               const products = Array.isArray(
-                                selectedIkmForModal?.products
+                                selectedIkmForModal?.products,
                               )
                                 ? selectedIkmForModal.products
                                 : Array.isArray(
-                                    selectedIkmForModal?.productList
-                                  )
-                                ? selectedIkmForModal.productList
-                                : [];
+                                      selectedIkmForModal?.productList,
+                                    )
+                                  ? selectedIkmForModal.productList
+                                  : [];
                               const services = Array.isArray(
-                                selectedIkmForModal?.services
+                                selectedIkmForModal?.services,
                               )
                                 ? selectedIkmForModal.services
                                 : Array.isArray(
-                                    selectedIkmForModal?.serviceList
-                                  )
-                                ? selectedIkmForModal.serviceList
-                                : Array.isArray(
-                                    selectedIkmForModal?.services_offered
-                                  )
-                                ? selectedIkmForModal.services_offered
-                                : [];
+                                      selectedIkmForModal?.serviceList,
+                                    )
+                                  ? selectedIkmForModal.serviceList
+                                  : Array.isArray(
+                                        selectedIkmForModal?.services_offered,
+                                      )
+                                    ? selectedIkmForModal.services_offered
+                                    : [];
 
                               const hasProducts = products.length > 0;
                               const hasServices = services.length > 0;
@@ -2853,23 +2858,23 @@ const UserDashboard = () => {
 
                         {(() => {
                           const products = Array.isArray(
-                            selectedIkmForModal.products
+                            selectedIkmForModal.products,
                           )
                             ? selectedIkmForModal.products
                             : Array.isArray(selectedIkmForModal.productList)
-                            ? selectedIkmForModal.productList
-                            : [];
+                              ? selectedIkmForModal.productList
+                              : [];
                           const services = Array.isArray(
-                            selectedIkmForModal.services
+                            selectedIkmForModal.services,
                           )
                             ? selectedIkmForModal.services
                             : Array.isArray(selectedIkmForModal.serviceList)
-                            ? selectedIkmForModal.serviceList
-                            : Array.isArray(
-                                selectedIkmForModal.services_offered
-                              )
-                            ? selectedIkmForModal.services_offered
-                            : [];
+                              ? selectedIkmForModal.serviceList
+                              : Array.isArray(
+                                    selectedIkmForModal.services_offered,
+                                  )
+                                ? selectedIkmForModal.services_offered
+                                : [];
 
                           const serviceFallback =
                             !services.length && selectedIkmForModal.serviceType
@@ -3083,12 +3088,12 @@ const UserDashboard = () => {
                       {/* Machines & Equipment */}
                       {(() => {
                         const machines = Array.isArray(
-                          selectedIkmForModal?.machines
+                          selectedIkmForModal?.machines,
                         )
                           ? selectedIkmForModal.machines
                           : Array.isArray(selectedIkmForModal?.machineList)
-                          ? selectedIkmForModal.machineList
-                          : [];
+                            ? selectedIkmForModal.machineList
+                            : [];
 
                         if (!machines.length) return null;
 
@@ -3223,12 +3228,12 @@ const UserDashboard = () => {
                                   {typeof cert === "string"
                                     ? cert
                                     : cert.name
-                                    ? `${cert.name}${
-                                        cert.year ? ` (${cert.year})` : ""
-                                      }`
-                                    : JSON.stringify(cert)}
+                                      ? `${cert.name}${
+                                          cert.year ? ` (${cert.year})` : ""
+                                        }`
+                                      : JSON.stringify(cert)}
                                 </span>
-                              )
+                              ),
                             )}
                         </div>
                       </div>
@@ -3266,7 +3271,7 @@ const UserDashboard = () => {
                             window.location.href = `mailto:${
                               selectedIkmForModal?.email
                             }?subject=${encodeURIComponent(
-                              subject
+                              subject,
                             )}&body=${encodeURIComponent(body)}`;
                           }}
                         >
@@ -3448,7 +3453,7 @@ const UserDashboard = () => {
                     e.preventDefault();
                     if (!selectedIkm) {
                       alert(
-                        "Silakan pilih IKM dari daftar saran sebelum menyimpan."
+                        "Silakan pilih IKM dari daftar saran sebelum menyimpan.",
                       );
                       return;
                     }
@@ -3495,7 +3500,7 @@ const UserDashboard = () => {
                         {
                           pendingPartnerships: arrayUnion(payloadWithUserInfo),
                         },
-                        { merge: true }
+                        { merge: true },
                       );
 
                       // Also add to IKM's newPartnershipRequests array
@@ -3506,7 +3511,7 @@ const UserDashboard = () => {
                           newPartnershipRequests:
                             arrayUnion(payloadWithUserInfo),
                         },
-                        { merge: true }
+                        { merge: true },
                       );
 
                       // Optimistic update: reflect pending request immediately
@@ -3521,12 +3526,12 @@ const UserDashboard = () => {
                       setIkmSearchResults([]);
                       setSelectedIkm(null);
                       alert(
-                        "Data kemitraan baru berhasil disimpan dan akan diverifikasi oleh IKM."
+                        "Data kemitraan baru berhasil disimpan dan akan diverifikasi oleh IKM.",
                       );
                     } catch (err) {
                       console.error("Error saving newPartnership:", err);
                       alert(
-                        "Gagal menyimpan data kemitraan. Silakan coba lagi."
+                        "Gagal menyimpan data kemitraan. Silakan coba lagi.",
                       );
                     }
                   }}
@@ -3752,12 +3757,12 @@ const UserDashboard = () => {
                       }
                       setShowManualPartnershipModal(false);
                       alert(
-                        "Data kemitraan sudah tersimpan. Terima kasih sudah mengisi."
+                        "Data kemitraan sudah tersimpan. Terima kasih sudah mengisi.",
                       );
                     } catch (err) {
                       console.error("Error saving manual partnership:", err);
                       alert(
-                        "Terjadi kesalahan saat menyimpan data. Silakan coba lagi."
+                        "Terjadi kesalahan saat menyimpan data. Silakan coba lagi.",
                       );
                     }
                   }}

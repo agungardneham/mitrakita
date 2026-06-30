@@ -63,6 +63,11 @@ const AdminDashboard = () => {
   // State untuk Survey IKM
   const [ikmSurveyList, setIkmSurveyList] = useState([]);
   const [surveySearch, setSurveySearch] = useState("");
+  const [profileSearch, setProfileSearch] = useState("");
+  const [profilePage, setProfilePage] = useState(1);
+  const profilePageSize = 10;
+  const [loginPage, setLoginPage] = useState(1);
+  const loginPageSize = 10;
 
   const handleLogout = () => {
     adminLogout();
@@ -194,6 +199,144 @@ const AdminDashboard = () => {
     // Otherwise return as string
     return String(value);
   };
+
+  const ikmProfileCompletionData = useMemo(() => {
+    const requiredRegisterFields = [
+      "email",
+      "phone",
+      "businessName",
+      "kbli",
+      "nib",
+      "officeAddress",
+      "officeCity",
+      "officeProvince",
+      "factoryAddress",
+      "factoryCity",
+      "factoryProvince",
+      "fullName",
+      "gender",
+      "age",
+    ];
+
+    const requiredBusinessProfileFields = [
+      "logoUrl",
+      "fullName",
+      "businessName",
+      "nib",
+      "phone",
+      "kbli",
+      "officeAddress",
+      "officeCity",
+      "officeProvince",
+      "factoryAddress",
+      "factoryCity",
+      "factoryProvince",
+      "establishedYear",
+      "employees",
+      "bio",
+    ];
+
+    const isFieldFilled = (value) => {
+      return (
+        value !== undefined && value !== null && String(value).trim() !== ""
+      );
+    };
+
+    const isCompleteGroup = (entity, fields) => {
+      return fields.every((field) => isFieldFilled(entity?.[field]));
+    };
+
+    const getArrayLength = (entity, keys) => {
+      for (const key of keys) {
+        if (Array.isArray(entity?.[key])) {
+          return entity[key].length;
+        }
+      }
+      return 0;
+    };
+
+    return ikmData.map((ikm, index) => {
+      const hasRegisterProfile = isCompleteGroup(ikm, requiredRegisterFields);
+      const hasBusinessProfile = isCompleteGroup(
+        ikm,
+        requiredBusinessProfileFields,
+      );
+      const machinesCount = getArrayLength(ikm, ["machines", "mesin"]);
+      const productsCount = getArrayLength(ikm, [
+        "products",
+        "productList",
+        "produk",
+      ]);
+      const servicesCount = getArrayLength(ikm, [
+        "services",
+        "serviceList",
+        "layanan",
+      ]);
+      const hasProductOrService = productsCount > 0 || servicesCount > 0;
+      const hasSurveyCompleted = Boolean(
+        ikm.surveySubmittedAt ||
+        (ikm.survey && Object.keys(ikm.survey).length > 0),
+      );
+
+      const completionPoints = [
+        hasRegisterProfile,
+        hasBusinessProfile,
+        machinesCount > 0,
+        hasProductOrService,
+        hasSurveyCompleted,
+      ].filter(Boolean).length;
+
+      return {
+        id: ikm.id || index,
+        businessName: ikm.businessName || "N/A",
+        completion: completionPoints * 20,
+      };
+    });
+  }, [ikmData]);
+
+  const filteredProfileCompletionData = useMemo(() => {
+    const query = profileSearch.trim().toLowerCase();
+    if (!query) return ikmProfileCompletionData;
+
+    return ikmProfileCompletionData.filter((item) =>
+      item.businessName.toLowerCase().includes(query),
+    );
+  }, [ikmProfileCompletionData, profileSearch]);
+
+  const profileTotalPages = Math.max(
+    1,
+    Math.ceil(filteredProfileCompletionData.length / profilePageSize),
+  );
+
+  const paginatedProfileCompletionData = useMemo(() => {
+    const startIndex = (profilePage - 1) * profilePageSize;
+    return filteredProfileCompletionData.slice(
+      startIndex,
+      startIndex + profilePageSize,
+    );
+  }, [filteredProfileCompletionData, profilePage]);
+
+  useEffect(() => {
+    if (profilePage > profileTotalPages) {
+      setProfilePage(profileTotalPages);
+    }
+  }, [profilePage, profileTotalPages]);
+
+  const loginTotalPages = Math.max(
+    1,
+    Math.ceil(loginLogs.length / loginPageSize),
+  );
+
+  const paginatedLoginLogs = useMemo(() => {
+    const startIndex = (loginPage - 1) * loginPageSize;
+    return loginLogs.slice(startIndex, startIndex + loginPageSize);
+  }, [loginLogs, loginPage]);
+
+  useEffect(() => {
+    if (loginPage > loginTotalPages) {
+      setLoginPage(loginTotalPages);
+    }
+  }, [loginPage, loginTotalPages]);
 
   // Fetch semua data dari Firestore
   useEffect(() => {
@@ -540,18 +683,42 @@ const AdminDashboard = () => {
 
   // Export IKM data to Excel
   const exportToExcel = () => {
-    // Transform real IKM data for export
-    const exportData = ikmData.map((ikm, index) => ({
-      "No.": index + 1,
-      "Nama Perusahaan": ikm.businessName || "N/A",
-      "KBLI 5 Digit": ikm.kbli || "N/A",
-      "KBLI 2 Digit": ikm.kbli ? String(ikm.kbli).substring(0, 2) : "N/A",
-      Komoditi: ikm.commodity || "N/A",
-      "Kabupaten/Kota": ikm.officeCity || ikm.factoryCity || "N/A",
-      Provinsi: ikm.officeProvince || ikm.factoryProvince || "N/A",
-      "Contact Person": ikm.fullName || "N/A",
-      "No. Telp": ikm.phone || "N/A",
-    }));
+    // Transform real IKM data for export and include profile completion
+    const completionMap = Object.fromEntries(
+      ikmProfileCompletionData.map((item) => [item.id, item.completion]),
+    );
+
+    const exportData = ikmData.map((ikm, index) => {
+      let completion = 0;
+      if (
+        ikm &&
+        ikm.id &&
+        Object.prototype.hasOwnProperty.call(completionMap, ikm.id)
+      ) {
+        completion = completionMap[ikm.id];
+      } else {
+        const found = ikmProfileCompletionData.find(
+          (i) =>
+            i.businessName &&
+            ikm.businessName &&
+            i.businessName.toLowerCase() === ikm.businessName.toLowerCase(),
+        );
+        completion = found ? found.completion : 0;
+      }
+
+      return {
+        "No.": index + 1,
+        "Nama Perusahaan": ikm.businessName || "N/A",
+        "Kelengkapan Profil": `${completion}%`,
+        "KBLI 5 Digit": ikm.kbli || "N/A",
+        "KBLI 2 Digit": ikm.kbli ? String(ikm.kbli).substring(0, 2) : "N/A",
+        Komoditi: ikm.commodity || "N/A",
+        "Kabupaten/Kota": ikm.officeCity || ikm.factoryCity || "N/A",
+        Provinsi: ikm.officeProvince || ikm.factoryProvince || "N/A",
+        "Contact Person": ikm.fullName || "N/A",
+        "No. Telp": ikm.phone || "N/A",
+      };
+    });
 
     if (exportData.length === 0) {
       alert("Tidak ada data IKM untuk diekspor");
@@ -1066,7 +1233,7 @@ const AdminDashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {loginLogs.map((log) => (
+                      {paginatedLoginLogs.map((log) => (
                         <tr
                           key={log.id}
                           className="border-b border-gray-100 hover:bg-gray-50"
@@ -1105,6 +1272,44 @@ const AdminDashboard = () => {
                     </div>
                   )}
                 </div>
+
+                {loginLogs.length > 0 && (
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <p className="text-sm text-gray-600">
+                      Menampilkan{" "}
+                      {paginatedLoginLogs.length > 0
+                        ? (loginPage - 1) * loginPageSize + 1
+                        : 0}{" "}
+                      - {Math.min(loginPage * loginPageSize, loginLogs.length)}{" "}
+                      dari {loginLogs.length} log
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() =>
+                          setLoginPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={loginPage === 1}
+                        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
+                      >
+                        Sebelumnya
+                      </button>
+                      <span className="text-sm text-gray-600">
+                        Halaman {loginPage} dari {loginTotalPages}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setLoginPage((prev) =>
+                            Math.min(prev + 1, loginTotalPages),
+                          )
+                        }
+                        disabled={loginPage === loginTotalPages}
+                        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
+                      >
+                        Berikutnya
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1329,6 +1534,124 @@ const AdminDashboard = () => {
                     <p>Tidak ada data aktivitas untuk periode ini</p>
                   </div>
                 )}
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-lg p-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                  <h3
+                    className="text-xl font-bold text-gray-800"
+                    style={{ fontFamily: "Poppins, sans-serif" }}
+                  >
+                    Kelengkapan Profil IKM
+                  </h3>
+                  <div className="w-full md:w-1/3">
+                    <input
+                      type="text"
+                      value={profileSearch}
+                      onChange={(e) => {
+                        setProfilePage(1);
+                        setProfileSearch(e.target.value);
+                      }}
+                      placeholder="Cari Nama IKM..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ fontFamily: "Open Sans, sans-serif" }}
+                    />
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b-2 border-gray-200 bg-gray-50">
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-700">
+                          No.
+                        </th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-700">
+                          Nama IKM
+                        </th>
+                        <th className="px-6 py-4 text-sm font-semibold text-gray-700">
+                          Kelengkapan Profil
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProfileCompletionData.length > 0 ? (
+                        paginatedProfileCompletionData.map((item, idx) => (
+                          <tr
+                            key={item.id}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {(profilePage - 1) * profilePageSize + idx + 1}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-semibold text-gray-800">
+                              {item.businessName}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-green-600 to-green-400"
+                                  style={{ width: `${item.completion}%` }}
+                                />
+                              </div>
+                              <div className="mt-2 text-xs text-gray-500">
+                                {item.completion}%
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan="3"
+                            className="px-6 py-8 text-center text-gray-500"
+                          >
+                            Belum ada data IKM untuk ditampilkan.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <p className="text-sm text-gray-600">
+                    Menampilkan{" "}
+                    {paginatedProfileCompletionData.length > 0
+                      ? (profilePage - 1) * profilePageSize + 1
+                      : 0}{" "}
+                    -{" "}
+                    {Math.min(
+                      profilePage * profilePageSize,
+                      filteredProfileCompletionData.length,
+                    )}{" "}
+                    dari {filteredProfileCompletionData.length} IKM
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        setProfilePage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={profilePage === 1}
+                      className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
+                    >
+                      Sebelumnya
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      Halaman {profilePage} dari {profileTotalPages}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setProfilePage((prev) =>
+                          Math.min(prev + 1, profileTotalPages),
+                        )
+                      }
+                      disabled={profilePage === profileTotalPages}
+                      className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-gray-50"
+                    >
+                      Berikutnya
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

@@ -55,7 +55,6 @@ export default defineConfig({
         manualChunks: {
           react: ["react", "react-dom"],
           supabase: ["@supabase/supabase-js"],
-          firebase: ["firebase"],
           charts: ["recharts"],
           utils: ["axios", "crypto-js"],
         },
